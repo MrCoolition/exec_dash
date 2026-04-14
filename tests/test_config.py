@@ -25,3 +25,17 @@ def test_resolve_provider_single_inline_auth():
     }
 
     assert config._resolve_auth_provider(auth) is None
+
+
+def test_resolve_provider_legacy_auth0_requires_client_credentials(monkeypatch):
+    monkeypatch.setattr(config.st, "secrets", {"auth0": {"domain": "x"}})
+    assert config._resolve_auth_provider({}) is None
+
+
+def test_resolve_provider_legacy_auth0_with_client_credentials(monkeypatch):
+    monkeypatch.setattr(
+        config.st,
+        "secrets",
+        {"auth0": {"domain": "x", "client_id": "id", "client_secret": "secret"}},
+    )
+    assert config._resolve_auth_provider({}) == "auth0"

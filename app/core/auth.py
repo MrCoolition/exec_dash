@@ -8,6 +8,22 @@ from app.models.pydantic_models import User
 from app.services.user_context import UserContext
 
 
+def _legacy_auth0_hint() -> str | None:
+    auth0 = st.secrets.get("auth0", {})
+    if not isinstance(auth0, dict):
+        return None
+
+    has_legacy = bool(auth0.get("domain") and auth0.get("client_id") and auth0.get("client_secret"))
+    if not has_legacy:
+        return None
+
+    return (
+        "Detected legacy Auth0 secrets under `[auth0]`. Streamlit OIDC requires "
+        "`[auth]` and `[auth.auth0]` in `.streamlit/secrets.toml` (including "
+        "`server_metadata_url`, typically `https://<domain>/.well-known/openid-configuration`)."
+    )
+
+
 def ensure_authenticated_user() -> object:
     streamlit_user = getattr(st, "user", None)
     is_logged_in = bool(getattr(streamlit_user, "is_logged_in", False))
@@ -24,7 +40,8 @@ def ensure_authenticated_user() -> object:
                     login_fn(auth_provider)
                 except StreamlitAuthError:
                     st.info(
-                        "Authentication is not configured for this deployment. "
+                        _legacy_auth0_hint()
+                        or "Authentication is not configured for this deployment. "
                         "Configure credentials for an auth provider in "
                         "`.streamlit/secrets.toml`, then reload this app."
                     )
@@ -34,13 +51,15 @@ def ensure_authenticated_user() -> object:
                     login_fn()
                 except StreamlitAuthError:
                     st.info(
-                        "Authentication is not configured for this deployment. "
+                        _legacy_auth0_hint()
+                        or "Authentication is not configured for this deployment. "
                         "Configure credentials for an auth provider in "
                         "`.streamlit/secrets.toml`, then reload this app."
                     )
         else:
             st.info(
-                "Authentication is not configured for this deployment. "
+                _legacy_auth0_hint()
+                or "Authentication is not configured for this deployment. "
                 "Configure an auth provider, then reload this app."
             )
 
