@@ -28,6 +28,16 @@ def ensure_authenticated_user() -> object:
                         "Configure credentials for an auth provider in "
                         "`.streamlit/secrets.toml`, then reload this app."
                     )
+        elif callable(login_fn) and auth_provider is None:
+            if st.button("Sign in", type="primary"):
+                try:
+                    login_fn()
+                except StreamlitAuthError:
+                    st.info(
+                        "Authentication is not configured for this deployment. "
+                        "Configure credentials for an auth provider in "
+                        "`.streamlit/secrets.toml`, then reload this app."
+                    )
         else:
             st.info(
                 "Authentication is not configured for this deployment. "

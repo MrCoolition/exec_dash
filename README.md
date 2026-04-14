@@ -24,5 +24,6 @@ alembic upgrade head
 ## Notes
 
 - Copy `.streamlit/secrets.example.toml` to `.streamlit/secrets.toml` for local development.
+- For Streamlit OIDC auth, use `[auth]` plus either inline credentials (`client_id`, `client_secret`, `server_metadata_url`) or a named provider block like `[auth.auth0]`.
 - Database config supports either a full `database.url` (`postgresql+psycopg://...`) or Aiven-style `database.AIVEN_*` fields that are assembled into a psycopg URL automatically.
 - Do **not** commit real secrets.
