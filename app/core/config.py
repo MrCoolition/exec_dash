@@ -49,15 +49,6 @@ def _resolve_auth_provider(auth: dict) -> str | None:
     if len(named_providers) == 1:
         return named_providers[0]
 
-    # Backwards compatibility for legacy top-level [auth0] blocks.
-    legacy_auth0 = st.secrets.get("auth0", {})
-    if (
-        isinstance(legacy_auth0, dict)
-        and legacy_auth0.get("client_id")
-        and legacy_auth0.get("client_secret")
-    ):
-        return "auth0"
-
     return None
 
 

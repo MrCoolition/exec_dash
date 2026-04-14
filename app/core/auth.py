@@ -24,6 +24,96 @@ def _legacy_auth0_hint() -> str | None:
     )
 
 
+def _has_value(config: dict, key: str) -> bool:
+    return bool(isinstance(config, dict) and config.get(key))
+
+
+def _render_auth_diagnostics(error: Exception | None = None) -> None:
+    auth = st.secrets.get("auth", {})
+    named_provider_configs = {
+        key: value
+        for key, value in auth.items()
+        if isinstance(key, str) and isinstance(value, dict)
+    }
+
+    auth_provider = load_config().auth_provider
+    provider_config = named_provider_configs.get(auth_provider) if auth_provider else {}
+    legacy_auth0 = st.secrets.get("auth0", {})
+
+    rows = [
+        {
+            "check": "[auth] exists",
+            "status": isinstance(auth, dict),
+        },
+        {
+            "check": "[auth].redirect_uri set",
+            "status": _has_value(auth, "redirect_uri"),
+        },
+        {
+            "check": "[auth].cookie_secret set",
+            "status": _has_value(auth, "cookie_secret"),
+        },
+        {
+            "check": "provider resolved",
+            "status": auth_provider is not None or (
+                _has_value(auth, "client_id") and _has_value(auth, "client_secret")
+            ),
+            "details": auth_provider or "inline provider in [auth]",
+        },
+        {
+            "check": "named providers under [auth]",
+            "status": bool(named_provider_configs),
+            "details": ", ".join(sorted(named_provider_configs)) or "none",
+        },
+        {
+            "check": "legacy [auth0] block detected",
+            "status": isinstance(legacy_auth0, dict) and bool(legacy_auth0),
+            "details": "legacy config is ignored by Streamlit OIDC",
+        },
+    ]
+
+    if auth_provider and isinstance(provider_config, dict):
+        rows.extend(
+            [
+                {
+                    "check": f"[auth.{auth_provider}].client_id set",
+                    "status": _has_value(provider_config, "client_id"),
+                },
+                {
+                    "check": f"[auth.{auth_provider}].client_secret set",
+                    "status": _has_value(provider_config, "client_secret"),
+                },
+                {
+                    "check": f"[auth.{auth_provider}].server_metadata_url set",
+                    "status": _has_value(provider_config, "server_metadata_url"),
+                },
+            ]
+        )
+
+    with st.expander("Authentication troubleshooting", expanded=True):
+        st.write(
+            "Use these checks to validate whether this deployment has enough OIDC "
+            "configuration for `st.login()` to work."
+        )
+        st.table(rows)
+
+        if error is not None:
+            st.code(f"StreamlitAuthError: {error}")
+
+        st.caption("If you currently use `[auth0]`, migrate to this format:")
+        st.code(
+            """[auth]
+redirect_uri = "https://YOUR-APP.streamlit.app/"
+cookie_secret = "LONG_RANDOM_SECRET"
+
+[auth.auth0]
+client_id = "..."
+client_secret = "..."
+server_metadata_url = "https://YOUR_DOMAIN/.well-known/openid-configuration"
+"""
+        )
+
+
 def ensure_authenticated_user() -> object:
     streamlit_user = getattr(st, "user", None)
     is_logged_in = bool(getattr(streamlit_user, "is_logged_in", False))
@@ -38,30 +128,33 @@ def ensure_authenticated_user() -> object:
             if st.button("Sign in", type="primary"):
                 try:
                     login_fn(auth_provider)
-                except StreamlitAuthError:
+                except StreamlitAuthError as exc:
                     st.info(
                         _legacy_auth0_hint()
                         or "Authentication is not configured for this deployment. "
                         "Configure credentials for an auth provider in "
                         "`.streamlit/secrets.toml`, then reload this app."
                     )
+                    _render_auth_diagnostics(exc)
         elif callable(login_fn) and auth_provider is None:
             if st.button("Sign in", type="primary"):
                 try:
                     login_fn()
-                except StreamlitAuthError:
+                except StreamlitAuthError as exc:
                     st.info(
                         _legacy_auth0_hint()
                         or "Authentication is not configured for this deployment. "
                         "Configure credentials for an auth provider in "
                         "`.streamlit/secrets.toml`, then reload this app."
                     )
+                    _render_auth_diagnostics(exc)
         else:
             st.info(
                 _legacy_auth0_hint()
                 or "Authentication is not configured for this deployment. "
                 "Configure an auth provider, then reload this app."
             )
+            _render_auth_diagnostics()
 
         st.stop()
 

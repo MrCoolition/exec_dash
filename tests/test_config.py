@@ -38,4 +38,4 @@ def test_resolve_provider_legacy_auth0_with_client_credentials(monkeypatch):
         "secrets",
         {"auth0": {"domain": "x", "client_id": "id", "client_secret": "secret"}},
     )
-    assert config._resolve_auth_provider({}) == "auth0"
+    assert config._resolve_auth_provider({}) is None
