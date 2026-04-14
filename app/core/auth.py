@@ -8,6 +8,37 @@ from app.models.pydantic_models import User
 from app.services.user_context import UserContext
 
 
+def _missing_auth_requirements() -> list[str]:
+    auth = st.secrets.get("auth", {})
+    missing: list[str] = []
+    if not isinstance(auth, dict):
+        return ["[auth] block"]
+
+    if not auth.get("redirect_uri"):
+        missing.append("[auth].redirect_uri")
+    if not auth.get("cookie_secret"):
+        missing.append("[auth].cookie_secret")
+
+    named_provider_configs = {
+        key: value
+        for key, value in auth.items()
+        if isinstance(key, str) and isinstance(value, dict)
+    }
+    auth_provider = load_config().auth_provider
+    if auth_provider is None:
+        inline_keys = ("client_id", "client_secret", "server_metadata_url")
+        for key in inline_keys:
+            if not auth.get(key):
+                missing.append(f"[auth].{key}")
+    else:
+        provider_config = named_provider_configs.get(auth_provider, {})
+        for key in ("client_id", "client_secret", "server_metadata_url"):
+            if not provider_config.get(key):
+                missing.append(f"[auth.{auth_provider}].{key}")
+
+    return missing
+
+
 def _legacy_auth0_hint() -> str | None:
     auth0 = st.secrets.get("auth0", {})
     if not isinstance(auth0, dict):
@@ -124,8 +155,16 @@ def ensure_authenticated_user() -> object:
 
         login_fn = getattr(st, "login", None)
         auth_provider = load_config().auth_provider
+        missing_requirements = _missing_auth_requirements()
+        auth_ready = not missing_requirements
+        if not auth_ready:
+            st.warning(
+                "Authentication is partially configured. Missing required values: "
+                + ", ".join(missing_requirements)
+            )
+
         if callable(login_fn) and auth_provider:
-            if st.button("Sign in", type="primary"):
+            if st.button("Sign in", type="primary", disabled=not auth_ready):
                 try:
                     login_fn(auth_provider)
                 except StreamlitAuthError as exc:
@@ -137,7 +176,7 @@ def ensure_authenticated_user() -> object:
                     )
                     _render_auth_diagnostics(exc)
         elif callable(login_fn) and auth_provider is None:
-            if st.button("Sign in", type="primary"):
+            if st.button("Sign in", type="primary", disabled=not auth_ready):
                 try:
                     login_fn()
                 except StreamlitAuthError as exc:
