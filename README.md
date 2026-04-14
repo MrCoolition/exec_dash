@@ -24,4 +24,5 @@ alembic upgrade head
 ## Notes
 
 - Copy `.streamlit/secrets.example.toml` to `.streamlit/secrets.toml` for local development.
+- Database config supports either a full `database.url` (`postgresql+psycopg://...`) or Aiven-style `database.AIVEN_*` fields that are assembled into a psycopg URL automatically.
 - Do **not** commit real secrets.
