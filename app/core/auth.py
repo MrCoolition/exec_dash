@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from streamlit.errors import StreamlitAuthError
 
 from app.core.config import load_config
 from app.models.pydantic_models import User
@@ -19,7 +20,14 @@ def ensure_authenticated_user() -> object:
         auth_provider = load_config().auth_provider
         if callable(login_fn) and auth_provider:
             if st.button("Sign in", type="primary"):
-                login_fn(auth_provider)
+                try:
+                    login_fn(auth_provider)
+                except StreamlitAuthError:
+                    st.info(
+                        "Authentication is not configured for this deployment. "
+                        "Configure credentials for an auth provider in "
+                        "`.streamlit/secrets.toml`, then reload this app."
+                    )
         else:
             st.info(
                 "Authentication is not configured for this deployment. "

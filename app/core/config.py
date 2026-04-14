@@ -22,7 +22,7 @@ class AdoConfig:
 
 @dataclass(frozen=True)
 class AppConfig:
-    auth_provider: str
+    auth_provider: str | None
     database: DatabaseConfig
     ado: AdoConfig
 
@@ -51,7 +51,7 @@ def load_config() -> AppConfig:
         sslmode = "require"
 
     return AppConfig(
-        auth_provider=auth_provider or "auth0",
+        auth_provider=auth_provider,
         database=DatabaseConfig(
             url=database_url or "sqlite+pysqlite:///./local.db",
             sslmode=sslmode,
