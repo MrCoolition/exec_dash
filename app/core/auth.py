@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import streamlit as st
+from streamlit.errors import StreamlitAuthError
 
 from app.core.config import load_auth_config
 from app.models.pydantic_models import User
@@ -233,7 +234,11 @@ def ensure_authenticated_user() -> object:
     if not oidc_ready:
         st.warning(oidc_reason)
     if st.button("Log in with OIDC", type="primary", disabled=not oidc_ready):
-        st.login()
+        try:
+            st.login()
+        except StreamlitAuthError as exc:
+            st.error("OIDC login could not start because Streamlit auth secrets are incomplete.")
+            st.caption(f"Details: {exc}")
     _render_auth_troubleshooting(header_rows + oidc_rows + secrets_rows)
     st.stop()
 
