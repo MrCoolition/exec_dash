@@ -59,3 +59,18 @@ def test_legacy_auth0_hint_ignores_incomplete_legacy_config(monkeypatch):
     monkeypatch.setattr(auth.st, "secrets", {"auth0": {"domain": "tenant.auth0.com"}})
 
     assert auth._legacy_auth0_hint() is None
+
+
+def test_missing_auth_requirements_accepts_auth_domain_shorthand(monkeypatch):
+    monkeypatch.setattr(
+        auth.st,
+        "secrets",
+        {
+            "auth": (
+                '[auth]\\ndomain = "tenant.auth0.com"\\nclient_id = "id"\\n'
+                'client_secret = "secret"\\nredirect_uri = "https://example.com/"'
+            )
+        },
+    )
+
+    assert auth._missing_auth_requirements() == []

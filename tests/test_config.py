@@ -39,3 +39,22 @@ def test_resolve_provider_legacy_auth0_with_client_credentials(monkeypatch):
         {"auth0": {"domain": "x", "client_id": "id", "client_secret": "secret"}},
     )
     assert config._resolve_auth_provider({}) is None
+
+
+def test_load_auth_config_parses_escaped_toml_string(monkeypatch):
+    monkeypatch.setattr(
+        config.st,
+        "secrets",
+        {
+            "auth": (
+                '[auth]\\ndomain = "tenant.auth0.com"\\nclient_id = "id"\\n'
+                'client_secret = "secret"\\nredirect_uri = "https://example.com/"'
+            )
+        },
+    )
+
+    auth = config.load_auth_config()
+
+    assert auth["domain"] == "tenant.auth0.com"
+    assert auth["server_metadata_url"] == "https://tenant.auth0.com/.well-known/openid-configuration"
+    assert auth["cookie_secret"] == "secret"
