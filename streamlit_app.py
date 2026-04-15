@@ -12,6 +12,7 @@ from app.core.auth import (
 )
 from app.core.db import init_engine
 from app.core.logging import configure_logging
+from app.core.error_reporting import render_internal_error
 from app.ui.layout import configure_page, render_shell
 from app.ui.pages import build_pages
 
@@ -30,9 +31,6 @@ if not st.user.is_logged_in:
     st.stop()
 
 
-configure_logging()
-configure_page()
-init_engine()
 
 
 def main() -> None:
@@ -58,4 +56,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        configure_logging()
+        configure_page()
+        init_engine()
+        main()
+    except Exception as exc:  # pragma: no cover - visual runtime fallback
+        render_internal_error(exc, context="streamlit_app bootstrap/main execution")
