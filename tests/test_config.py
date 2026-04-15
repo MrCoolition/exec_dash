@@ -106,3 +106,41 @@ def test_load_auth_config_reads_mapping_based_sections(monkeypatch):
     assert auth["client_id"] == "id"
     assert auth["server_metadata_url"] == "https://tenant.auth0.com/.well-known/openid-configuration"
     assert auth["cookie_secret"] == "cookie-from-db"
+
+
+def test_load_auth_config_builds_metadata_url_from_issuer(monkeypatch):
+    monkeypatch.setattr(
+        config.st,
+        "secrets",
+        {
+            "auth": {
+                "issuer": "https://tenant.example.com/",
+                "client_id": "id",
+                "client_secret": "secret",
+                "redirect_uri": "https://example.com/oauth2callback",
+            }
+        },
+    )
+
+    auth = config.load_auth_config()
+
+    assert auth["server_metadata_url"] == "https://tenant.example.com/.well-known/openid-configuration"
+
+
+def test_load_auth_config_keeps_full_metadata_url_if_already_well_known(monkeypatch):
+    monkeypatch.setattr(
+        config.st,
+        "secrets",
+        {
+            "auth": {
+                "issuer_url": "https://tenant.example.com/.well-known/openid-configuration",
+                "client_id": "id",
+                "client_secret": "secret",
+                "redirect_uri": "https://example.com/oauth2callback",
+            }
+        },
+    )
+
+    auth = config.load_auth_config()
+
+    assert auth["server_metadata_url"] == "https://tenant.example.com/.well-known/openid-configuration"

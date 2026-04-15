@@ -87,16 +87,27 @@ def load_auth_config() -> dict:
         if not resolved.get("server_metadata_url") and legacy_auth0.get("domain"):
             resolved["domain"] = legacy_auth0["domain"]
 
-    # Backward-compatible Auth0 shorthand.
-    domain = resolved.get("domain")
-    if domain and not resolved.get("server_metadata_url"):
-        normalized_domain = str(domain).strip().rstrip("/")
-        if normalized_domain:
-            if normalized_domain.startswith(("http://", "https://")):
-                base = normalized_domain
+    # Backward-compatible shorthand for OIDC metadata discovery URL.
+    # Accept common keys used across Auth0/Okta/OIDC samples.
+    metadata_source = (
+        resolved.get("server_metadata_url")
+        or resolved.get("issuer")
+        or resolved.get("issuer_url")
+        or resolved.get("authority")
+        or resolved.get("authority_url")
+        or resolved.get("domain")
+    )
+    if metadata_source and not resolved.get("server_metadata_url"):
+        normalized_source = str(metadata_source).strip().rstrip("/")
+        if normalized_source:
+            if normalized_source.startswith(("http://", "https://")):
+                base = normalized_source
             else:
-                base = f"https://{normalized_domain}"
-            resolved["server_metadata_url"] = f"{base}/.well-known/openid-configuration"
+                base = f"https://{normalized_source}"
+            if base.endswith("/.well-known/openid-configuration"):
+                resolved["server_metadata_url"] = base
+            else:
+                resolved["server_metadata_url"] = f"{base}/.well-known/openid-configuration"
 
     # Streamlit OIDC needs cookie_secret; use an explicit value when possible,
     # then database.NOOKIE_PASS, and finally client_secret to keep legacy
