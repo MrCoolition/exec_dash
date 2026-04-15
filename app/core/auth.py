@@ -158,10 +158,18 @@ def ensure_authenticated_user() -> object:
         missing_requirements = _missing_auth_requirements()
         auth_ready = not missing_requirements
         if not auth_ready:
-            st.warning(
-                "Authentication is partially configured. Missing required values: "
-                + ", ".join(missing_requirements)
-            )
+            legacy_hint = _legacy_auth0_hint()
+            if legacy_hint is not None and missing_requirements == ["[auth] block"]:
+                st.warning(
+                    "Authentication is partially configured. Missing required values: "
+                    "[auth] block (legacy [auth0] settings were detected)."
+                )
+                st.info(legacy_hint)
+            else:
+                st.warning(
+                    "Authentication is partially configured. Missing required values: "
+                    + ", ".join(missing_requirements)
+                )
 
         if callable(login_fn) and auth_provider:
             if st.button("Sign in", type="primary", disabled=not auth_ready):
