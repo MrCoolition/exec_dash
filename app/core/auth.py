@@ -13,6 +13,7 @@ from app.services.user_context import UserContext
 
 APP_NAME = "Impower AI"
 _REQUIRED_AUTH_KEYS = ("client_id", "client_secret", "redirect_uri", "server_metadata_url", "cookie_secret")
+_PLACEHOLDER_MARKERS = ("<", "your_", "changeme", "replace_me", "example")
 
 
 def _mask_secret(value: str, unmasked: int = 4) -> str:
@@ -138,16 +139,42 @@ def _validate_streamlit_secrets_shape() -> list[str]:
         issues.append("Streamlit secrets must include an [auth.auth0] provider block")
         return issues
 
-    if not str(auth_section.get("redirect_uri", "")).strip():
+    redirect_uri_raw = str(auth_section.get("redirect_uri", ""))
+    cookie_secret_raw = str(auth_section.get("cookie_secret", ""))
+    client_id_raw = str(provider_section.get("client_id", ""))
+    client_secret_raw = str(provider_section.get("client_secret", ""))
+    metadata_raw = str(provider_section.get("server_metadata_url", ""))
+
+    if not redirect_uri_raw.strip():
         issues.append("[auth].redirect_uri is required")
-    if not str(auth_section.get("cookie_secret", "")).strip():
+    if not cookie_secret_raw.strip():
         issues.append("[auth].cookie_secret is required")
-    if not str(provider_section.get("client_id", "")).strip():
+    if not client_id_raw.strip():
         issues.append("[auth.auth0].client_id is required")
-    if not str(provider_section.get("client_secret", "")).strip():
+    if not client_secret_raw.strip():
         issues.append("[auth.auth0].client_secret is required")
-    if not str(provider_section.get("server_metadata_url", "")).strip():
+    if not metadata_raw.strip():
         issues.append("[auth.auth0].server_metadata_url is required")
+
+    fields_to_trim = {
+        "[auth].redirect_uri": redirect_uri_raw,
+        "[auth].cookie_secret": cookie_secret_raw,
+        "[auth.auth0].client_id": client_id_raw,
+        "[auth.auth0].client_secret": client_secret_raw,
+        "[auth.auth0].server_metadata_url": metadata_raw,
+    }
+    for field_name, value in fields_to_trim.items():
+        if value and value != value.strip():
+            issues.append(f"{field_name} contains leading/trailing whitespace")
+
+    fields_to_check_placeholder = {
+        "[auth.auth0].client_id": client_id_raw.strip(),
+        "[auth.auth0].client_secret": client_secret_raw.strip(),
+    }
+    for field_name, value in fields_to_check_placeholder.items():
+        lowered = value.lower()
+        if value and any(marker in lowered for marker in _PLACEHOLDER_MARKERS):
+            issues.append(f"{field_name} appears to be a placeholder value")
     return issues
 
 
