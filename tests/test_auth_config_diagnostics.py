@@ -116,3 +116,29 @@ def test_ensure_authenticated_user_does_not_call_login_when_oidc_not_ready(monke
         assert str(exc) == "stopped"
 
     assert called["login"] is False
+
+
+def test_ensure_authenticated_user_handles_streamlit_auth_error(monkeypatch):
+    monkeypatch.setattr(auth, "_extract_identity_from_headers", lambda: ({}, []))
+    monkeypatch.setattr(auth, "_extract_identity_from_streamlit_user", lambda: ({}, []))
+    monkeypatch.setattr(auth, "_extract_identity_from_secrets", lambda: ({}, []))
+    monkeypatch.setattr(auth, "_render_auth_troubleshooting", lambda _rows: None)
+    monkeypatch.setattr(auth, "_oidc_login_readiness", lambda: (True, ""))
+
+    monkeypatch.setattr(auth.st, "title", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "error", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "write", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "warning", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "caption", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "button", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        auth.st,
+        "login",
+        lambda: (_ for _ in ()).throw(auth.StreamlitAuthError("missing cookie_secret")),
+    )
+    monkeypatch.setattr(auth.st, "stop", lambda: (_ for _ in ()).throw(RuntimeError("stopped")))
+
+    try:
+        auth.ensure_authenticated_user()
+    except RuntimeError as exc:
+        assert str(exc) == "stopped"
