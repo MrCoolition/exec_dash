@@ -96,8 +96,11 @@ def test_login_with_auth0_handles_streamlit_auth_error(monkeypatch):
         lambda *_args, **_kwargs: (_ for _ in ()).throw(StreamlitAuthError("bad auth config")),
     )
     captured_errors: list[str] = []
+    diagnostics_errors: list[str] = []
     monkeypatch.setattr(auth.st, "error", lambda msg: captured_errors.append(msg))
+    monkeypatch.setattr(auth, "render_auth_troubleshooting_panel", lambda msg=None: diagnostics_errors.append(msg or ""))
 
     auth.login_with_auth0()
 
     assert captured_errors
+    assert diagnostics_errors == ["bad auth config"]

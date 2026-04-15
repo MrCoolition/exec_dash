@@ -1,23 +1,108 @@
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 import streamlit as st
 from streamlit.errors import StreamlitAuthError
 
+from app.core.config import load_auth_config
 from app.models.pydantic_models import User
 from app.services.user_context import UserContext
 
 
 APP_NAME = "Impower AI"
+_REQUIRED_AUTH_KEYS = ("client_id", "client_secret", "redirect_uri", "server_metadata_url", "cookie_secret")
+
+
+def _mask_secret(value: str, unmasked: int = 4) -> str:
+    if len(value) <= unmasked:
+        return "*" * len(value)
+    return ("*" * max(len(value) - unmasked, 0)) + value[-unmasked:]
+
+
+def _build_suggested_auth_toml(auth: dict[str, str], fallback_base_url: str) -> str:
+    redirect_uri = auth.get("redirect_uri") or f"{fallback_base_url}/oauth2callback"
+    return "\n".join(
+        [
+            "[auth]",
+            f'client_id = "{auth.get("client_id") or "<YOUR_CLIENT_ID>"}"',
+            f'client_secret = "{_mask_secret(auth["client_secret"]) if auth.get("client_secret") else "<YOUR_CLIENT_SECRET>"}"',
+            f'redirect_uri = "{redirect_uri}"',
+            (
+                f'server_metadata_url = "{auth["server_metadata_url"]}"'
+                if auth.get("server_metadata_url")
+                else 'server_metadata_url = "https://<YOUR_DOMAIN>/.well-known/openid-configuration"'
+            ),
+            (
+                f'cookie_secret = "{_mask_secret(auth["cookie_secret"])}"'
+                if auth.get("cookie_secret")
+                else 'cookie_secret = "<A_LONG_RANDOM_SECRET>"'
+            ),
+        ]
+    )
+
+
+def render_auth_troubleshooting_panel(error_detail: str | None = None) -> None:
+    auth = load_auth_config()
+    missing_keys = [key for key in _REQUIRED_AUTH_KEYS if not auth.get(key)]
+    redirect_uri = str(auth.get("redirect_uri") or "").strip()
+
+    app_base_url = "https://exec-dash.streamlit.app"
+    if redirect_uri:
+        parsed = urlsplit(redirect_uri)
+        if parsed.scheme and parsed.netloc:
+            app_base_url = f"{parsed.scheme}://{parsed.netloc}"
+
+    st.subheader("Authentication Self-Troubleshooting")
+    if missing_keys:
+        st.error(
+            "Root cause: Streamlit OIDC credentials are incomplete. "
+            f"Missing keys: {', '.join(missing_keys)}."
+        )
+        st.info("Remedy: Add the missing keys in app secrets, save, and restart/redeploy the app.")
+    else:
+        st.warning(
+            "Root cause is likely a provider-side mismatch (callback URL / logout URL / web origin) "
+            "or a stale secret value."
+        )
+        st.info("Remedy: Compare the values below with your Auth0 application settings and update any mismatch.")
+
+    if error_detail:
+        st.caption(f"Last login error: {error_detail}")
+
+    st.markdown("#### Configuration checks")
+    for key in _REQUIRED_AUTH_KEYS:
+        value = auth.get(key)
+        if value:
+            st.write(f"✅ `{key}` is configured")
+        else:
+            st.write(f"❌ `{key}` is missing")
+
+    st.markdown("#### Effective auth settings (masked)")
+    st.code(_build_suggested_auth_toml(auth, app_base_url), language="toml")
+
+    st.markdown("#### Auth0 dashboard values to verify")
+    st.code(
+        "\n".join(
+            [
+                f"Allowed Callback URLs: {app_base_url}/oauth2callback",
+                f"Allowed Logout URLs: {app_base_url}",
+                f"Allowed Web Origins: {app_base_url}",
+            ]
+        ),
+        language="text",
+    )
 
 
 def login_with_auth0() -> None:
     try:
         st.login("auth0")
-    except StreamlitAuthError:
+    except StreamlitAuthError as exc:
         st.error(
             "Authentication is not configured correctly. "
             "Please add valid [auth] / [auth0] credentials in Streamlit secrets."
         )
+        render_auth_troubleshooting_panel(str(exc))
 
 
 def sync_user_from_oidc() -> None:
