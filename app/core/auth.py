@@ -135,14 +135,16 @@ def _validate_streamlit_secrets_shape() -> list[str]:
         ]
 
     provider_section = auth_section.get("auth0")
+    top_level_client_id = str(auth_section.get("client_id", "")).strip()
+    top_level_client_secret = str(auth_section.get("client_secret", "")).strip()
+
+    if top_level_client_id or top_level_client_secret:
+        issues.append(
+            "Remove top-level [auth] client_id/client_secret and keep credentials only in [auth.auth0]; "
+            "top-level [auth] credentials can trigger Auth0 'Failed Exchange: Unauthorized'"
+        )
+
     if not isinstance(provider_section, Mapping):
-        top_level_client_id = str(auth_section.get("client_id", "")).strip()
-        top_level_client_secret = str(auth_section.get("client_secret", "")).strip()
-        if top_level_client_id or top_level_client_secret:
-            issues.append(
-                "Move client_id/client_secret from [auth] into [auth.auth0]; "
-                "top-level [auth] credentials can trigger Auth0 'Failed Exchange: Unauthorized'"
-            )
         issues.append("Streamlit secrets must include an [auth.auth0] provider block")
         return issues
 

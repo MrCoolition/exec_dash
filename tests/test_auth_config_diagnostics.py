@@ -224,6 +224,48 @@ def test_login_with_auth0_blocks_flattened_auth_credentials_before_redirect(monk
     assert login_called["value"] is False
 
 
+def test_login_with_auth0_blocks_mixed_provider_and_top_level_credentials(monkeypatch):
+    monkeypatch.setattr(
+        auth,
+        "load_auth_config",
+        lambda: {
+            "client_id": "nested-id",
+            "client_secret": "nested-secret",
+            "redirect_uri": "https://exec-dash.streamlit.app/oauth2callback",
+            "server_metadata_url": "https://example.auth0.com/.well-known/openid-configuration",
+            "cookie_secret": "cookie-secret",
+        },
+    )
+    monkeypatch.setattr(
+        auth.st,
+        "secrets",
+        {
+            "auth": {
+                "redirect_uri": "https://exec-dash.streamlit.app/oauth2callback",
+                "cookie_secret": "cookie-secret",
+                "client_id": "stale-top-level-id",
+                "client_secret": "stale-top-level-secret",
+                "auth0": {
+                    "client_id": "nested-id",
+                    "client_secret": "nested-secret",
+                    "server_metadata_url": "https://example.auth0.com/.well-known/openid-configuration",
+                },
+            }
+        },
+    )
+    login_called = {"value": False}
+    monkeypatch.setattr(auth.st, "login", lambda *_args, **_kwargs: login_called.__setitem__("value", True))
+    captured_errors: list[str] = []
+    monkeypatch.setattr(auth.st, "error", lambda msg: captured_errors.append(msg))
+    monkeypatch.setattr(auth, "render_auth_troubleshooting_panel", lambda *_args, **_kwargs: None)
+
+    auth.login_with_auth0()
+
+    assert captured_errors
+    assert "Remove top-level [auth] client_id/client_secret" in captured_errors[0]
+    assert login_called["value"] is False
+
+
 def test_login_with_auth0_allows_canonical_streamlit_secrets_shape(monkeypatch):
     monkeypatch.setattr(
         auth,
