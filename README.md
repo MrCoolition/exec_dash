@@ -2,9 +2,9 @@
 
 Production-oriented scaffold for a Streamlit 1.55 executive delivery platform with:
 
-- Native OIDC authentication flow (`st.login`, `st.logout`).
+- Upstream Okta/Auth0 authentication with in-app troubleshooting diagnostics.
 - Role and tenant-aware page composition.
-- SQLAlchemy/Alembic-backed data layer for Aiven PostgreSQL.
+- SQLAlchemy-backed data layer for Aiven PostgreSQL.
 - Azure DevOps PAT integration wrapper with migration-ready credential abstraction.
 - Modular page architecture and service/repository split.
 
@@ -13,12 +13,6 @@ Production-oriented scaffold for a Streamlit 1.55 executive delivery platform wi
 ```bash
 pip install -r requirements.txt
 streamlit run streamlit_app.py
-```
-
-## Database migrations
-
-```bash
-alembic upgrade head
 ```
 
 ## Notes
