@@ -49,6 +49,8 @@ def main() -> None:
     sync_user_from_oidc()
 
     if st.session_state.get("authenticated", False):
+        st.success("Hello world")
+
         with st.sidebar:
             st.write(f"🔌 Logged in as: {st.session_state['username']}")
             if st.button("Logout"):
