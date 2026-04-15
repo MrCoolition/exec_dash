@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from streamlit.errors import StreamlitAuthError, StreamlitSecretNotFoundError
 
 from app.core.auth import (
     APP_NAME,
@@ -24,19 +25,30 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-if not st.user.is_logged_in:
+
+def _safe_user_logged_in() -> bool:
+    try:
+        return bool(st.user.is_logged_in)
+    except (StreamlitAuthError, StreamlitSecretNotFoundError) as exc:
+        st.error(f"Authentication bootstrap failed: {exc}")
+        render_auth_troubleshooting_panel(str(exc))
+        return False
+
+
+def _render_login_screen() -> None:
     st.title(APP_NAME)
     st.button("Login with Auth0", on_click=login_with_auth0)
     render_auth_troubleshooting_panel()
-    st.stop()
-
-
 
 
 def main() -> None:
+    if not _safe_user_logged_in():
+        _render_login_screen()
+        st.stop()
+
     sync_user_from_oidc()
 
-    if st.session_state["authenticated"]:
+    if st.session_state.get("authenticated", False):
         with st.sidebar:
             st.write(f"🔌 Logged in as: {st.session_state['username']}")
             if st.button("Logout"):
@@ -50,9 +62,7 @@ def main() -> None:
         pg = st.navigation(pages, position="top")
         pg.run()
     else:
-        st.title(APP_NAME)
-        st.button("Login with Auth0", on_click=login_with_auth0)
-        render_auth_troubleshooting_panel()
+        _render_login_screen()
 
 
 if __name__ == "__main__":
