@@ -108,6 +108,44 @@ def test_oidc_login_readiness_reports_missing_cookie_secret(monkeypatch):
     assert "cookie_secret" in reason
 
 
+def test_oidc_login_readiness_rejects_invalid_metadata_url(monkeypatch):
+    monkeypatch.setattr(
+        auth,
+        "load_auth_config",
+        lambda: {
+            "client_id": "id",
+            "client_secret": "secret",
+            "server_metadata_url": "tenant.example.com",
+            "redirect_uri": "https://example.com/oauth2callback",
+            "cookie_secret": "cookie",
+        },
+    )
+
+    ready, reason = auth._oidc_login_readiness()
+
+    assert not ready
+    assert "server_metadata_url" in reason
+
+
+def test_oidc_login_readiness_rejects_invalid_redirect_uri(monkeypatch):
+    monkeypatch.setattr(
+        auth,
+        "load_auth_config",
+        lambda: {
+            "client_id": "id",
+            "client_secret": "secret",
+            "server_metadata_url": "https://tenant/.well-known/openid-configuration",
+            "redirect_uri": "https://example.com/auth/callback",
+            "cookie_secret": "cookie",
+        },
+    )
+
+    ready, reason = auth._oidc_login_readiness()
+
+    assert not ready
+    assert "redirect_uri" in reason
+
+
 def test_ensure_authenticated_user_does_not_call_login_when_oidc_not_ready(monkeypatch):
     monkeypatch.setattr(auth, "_extract_identity_from_headers", lambda: ({}, []))
     monkeypatch.setattr(auth, "_extract_identity_from_streamlit_user", lambda: ({}, []))
