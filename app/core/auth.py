@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from urllib.parse import urlparse
 
 import streamlit as st
 from streamlit.errors import StreamlitAuthError
@@ -208,6 +209,34 @@ def _oidc_login_readiness() -> tuple[bool, str]:
         return False, (
             "OIDC login is not available because Streamlit auth secrets are incomplete. "
             f"Missing required keys: {missing_list}."
+        )
+
+    metadata_url = str(auth.get("server_metadata_url", "")).strip()
+    redirect_uri = str(auth.get("redirect_uri", "")).strip()
+
+    metadata_parts = urlparse(metadata_url)
+    if metadata_parts.scheme not in {"http", "https"} or not metadata_parts.netloc:
+        return False, (
+            "OIDC login is not available because `server_metadata_url` is invalid. "
+            "Set it to a full URL like "
+            "`https://<issuer>/.well-known/openid-configuration`."
+        )
+    if ".well-known/openid-configuration" not in metadata_parts.path:
+        return False, (
+            "OIDC login is not available because `server_metadata_url` must point to "
+            "the OpenID configuration endpoint ending in `/.well-known/openid-configuration`."
+        )
+
+    redirect_parts = urlparse(redirect_uri)
+    if redirect_parts.scheme not in {"http", "https"} or not redirect_parts.netloc:
+        return False, (
+            "OIDC login is not available because `redirect_uri` is invalid. "
+            "Set it to a full URL like `https://<app-host>/oauth2callback`."
+        )
+    if not redirect_parts.path.endswith("/oauth2callback"):
+        return False, (
+            "OIDC login is not available because `redirect_uri` should end with "
+            "`/oauth2callback` for Streamlit OIDC."
         )
     return True, ""
 
