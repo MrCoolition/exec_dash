@@ -19,12 +19,11 @@ def configure_page() -> None:
 
 def render_shell(ctx: UserContext) -> None:
     st.logo("https://streamlit.io/images/brand/streamlit-logo-primary-colormark-darktext.png")
-    cols = st.columns([2, 2, 2])
+    cols = st.columns([3, 3, 2])
     with cols[0]:
         st.caption(f"User: {ctx.user.display_name or ctx.user.email}")
     with cols[1]:
         st.caption(f"Roles: {', '.join(sorted(ctx.role_codes))}")
     with cols[2]:
-        if st.button("Logout"):
-            st.logout()
+        st.caption("Auth: Okta/Auth0 upstream")
     freshness_badge("fresh", "just now")

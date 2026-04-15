@@ -1,94 +1,50 @@
 from app.core import auth
 
 
-def test_missing_auth_requirements_for_named_provider(monkeypatch):
+def test_extract_identity_from_headers(monkeypatch):
+    headers = {
+        "x-auth-request-email": "person@example.com",
+        "x-auth-request-user": "Person Example",
+        "x-user-roles": "admin, client_viewer",
+    }
+    context = type("Ctx", (), {"headers": headers})()
+    monkeypatch.setattr(auth.st, "context", context)
+
+    identity, rows = auth._extract_identity_from_headers()
+
+    assert identity["email"] == "person@example.com"
+    assert identity["display_name"] == "Person Example"
+    assert identity["roles"] == "admin,client_viewer"
+    assert any(row["status"] == "ok" for row in rows)
+
+
+def test_extract_identity_from_secrets(monkeypatch):
     monkeypatch.setattr(
         auth.st,
         "secrets",
-        {
-            "auth": {
-                "redirect_uri": "https://example.com/oauth2callback",
-                "cookie_secret": "cookie",
-                "auth0": {
-                    "client_id": "id",
-                    "client_secret": "secret",
-                },
-            }
-        },
-    )
-    missing = auth._missing_auth_requirements()
-    assert missing == ["[auth.auth0].server_metadata_url"]
-
-
-def test_missing_auth_requirements_for_inline_provider(monkeypatch):
-    monkeypatch.setattr(
-        auth.st,
-        "secrets",
-        {
-            "auth": {
-                "redirect_uri": "https://example.com/oauth2callback",
-                "cookie_secret": "cookie",
-                "client_id": "id",
-            }
-        },
-    )
-    missing = auth._missing_auth_requirements()
-    assert missing == ["[auth].client_secret", "[auth].server_metadata_url"]
-
-
-def test_legacy_auth0_hint_detects_migratable_config(monkeypatch):
-    monkeypatch.setattr(
-        auth.st,
-        "secrets",
-        {
-            "auth0": {
-                "domain": "tenant.auth0.com",
-                "client_id": "id",
-                "client_secret": "secret",
-            }
-        },
+        {"identity": {"email": "fallback@example.com", "display_name": "Fallback User"}},
     )
 
-    hint = auth._legacy_auth0_hint()
+    identity, rows = auth._extract_identity_from_secrets()
 
-    assert hint is not None
-    assert "[auth]" in hint
-
-
-def test_legacy_auth0_hint_ignores_incomplete_legacy_config(monkeypatch):
-    monkeypatch.setattr(auth.st, "secrets", {"auth0": {"domain": "tenant.auth0.com"}})
-
-    assert auth._legacy_auth0_hint() is None
+    assert identity["email"] == "fallback@example.com"
+    assert identity["provider_sub"] == "fallback@example.com"
+    assert rows[0]["status"] == "ok"
 
 
-def test_missing_auth_requirements_accepts_auth_domain_shorthand(monkeypatch):
-    monkeypatch.setattr(
-        auth.st,
-        "secrets",
+def test_load_user_context_uses_okta_auth0_provider():
+    user = type(
+        "UserObj",
+        (),
         {
-            "auth": (
-                '[auth]\\ndomain = "tenant.auth0.com"\\nclient_id = "id"\\n'
-                'client_secret = "secret"\\nredirect_uri = "https://example.com/"'
-            )
+            "provider_sub": "abc-123",
+            "email": "person@example.com",
+            "display_name": "Person",
+            "roles": "client_viewer,admin",
         },
-    )
+    )()
 
-    assert auth._missing_auth_requirements() == []
+    ctx = auth.load_user_context(user)
 
-
-def test_missing_auth_requirements_accepts_legacy_auth0_block(monkeypatch):
-    monkeypatch.setattr(
-        auth.st,
-        "secrets",
-        {
-            "auth0": {
-                "domain": "tenant.auth0.com",
-                "client_id": "id",
-                "client_secret": "secret",
-                "redirect_uri": "https://example.com/",
-            },
-            "database": {"NOOKIE_PASS": "cookie-secret"},
-        },
-    )
-
-    assert auth._missing_auth_requirements() == []
+    assert ctx.user.provider == "okta-auth0"
+    assert "admin" in ctx.role_codes
