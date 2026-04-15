@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.core.auth import APP_NAME, ensure_authenticated_user, load_user_context, login_with_auth0, sync_user_from_oidc
+from app.core.auth import (
+    APP_NAME,
+    ensure_authenticated_user,
+    load_user_context,
+    login_with_auth0,
+    render_auth_troubleshooting_panel,
+    sync_user_from_oidc,
+)
 from app.core.db import init_engine
 from app.core.logging import configure_logging
 from app.ui.layout import configure_page, render_shell
@@ -19,6 +26,7 @@ st.set_page_config(
 if not st.user.is_logged_in:
     st.title(APP_NAME)
     st.button("Login with Auth0", on_click=login_with_auth0)
+    render_auth_troubleshooting_panel()
     st.stop()
 
 
@@ -46,6 +54,7 @@ def main() -> None:
     else:
         st.title(APP_NAME)
         st.button("Login with Auth0", on_click=login_with_auth0)
+        render_auth_troubleshooting_panel()
 
 
 if __name__ == "__main__":
