@@ -22,7 +22,7 @@ st.set_page_config(
     page_title=APP_NAME,
     page_icon="🧊",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 
@@ -30,15 +30,17 @@ def _safe_user_logged_in() -> bool:
     try:
         return bool(st.user.is_logged_in)
     except (StreamlitAuthError, StreamlitSecretNotFoundError) as exc:
-        st.error(f"Authentication bootstrap failed: {exc}")
-        render_auth_troubleshooting_panel(str(exc))
+        st.error("Authentication is not available yet. Check app secrets and try again.")
+        st.caption(f"Details: {exc}")
         return False
 
 
 def _render_login_screen() -> None:
     st.title(APP_NAME)
-    st.button("Login with Auth0", on_click=login_with_auth0)
-    render_auth_troubleshooting_panel()
+    st.write("Sign in to access the Impower Portfolio Command Center.")
+    st.button("Login with Auth0", on_click=login_with_auth0, type="primary")
+    with st.expander("Authentication troubleshooting", expanded=False):
+        render_auth_troubleshooting_panel()
 
 
 def main() -> None:
@@ -49,8 +51,6 @@ def main() -> None:
     sync_user_from_oidc()
 
     if st.session_state.get("authenticated", False):
-        st.success("Hello world")
-
         with st.sidebar:
             st.write(f"🔌 Logged in as: {st.session_state['username']}")
             if st.button("Logout"):
@@ -61,7 +61,7 @@ def main() -> None:
         ctx = load_user_context(streamlit_user)
         render_shell(ctx)
         pages = build_pages(ctx)
-        pg = st.navigation(pages, position="top")
+        pg = st.navigation(pages, position="sidebar")
         pg.run()
     else:
         _render_login_screen()

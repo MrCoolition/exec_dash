@@ -2,10 +2,18 @@ from __future__ import annotations
 
 import streamlit as st
 
+from app.ui.pages.common import ensure_sidebar_state
+
 
 def render() -> None:
-    st.title("Help / Definitions")
-    st.markdown("""
-- **Freshness**: fresh < 30 min, warning 30 min-4 hr, stale > 4 hr, critical stale > 24 hr.
-- **Delivery health**: Green/Yellow/Red based on overdue pressure and critical blockers.
-""")
+    ensure_sidebar_state()
+    st.title("Help & Support")
+    st.markdown(
+        """
+        ### Need assistance?
+
+        - Contact the PMO support desk for portfolio data issues.
+        - Use Weekly Updates to save draft progress and submit published snapshots.
+        - Dashboard and Program One-Pager show only submitted, published data.
+        """
+    )
