@@ -1,0 +1,1 @@
+-- Optional seed data placeholder. Runtime app reads only from persisted DB tables.
