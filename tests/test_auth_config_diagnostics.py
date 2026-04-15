@@ -32,6 +32,27 @@ def test_extract_identity_from_secrets(monkeypatch):
     assert rows[0]["status"] == "ok"
 
 
+def test_extract_identity_from_streamlit_user(monkeypatch):
+    user = type(
+        "OidcUser",
+        (),
+        {
+            "is_logged_in": True,
+            "email": "oidc@example.com",
+            "name": "OIDC User",
+            "sub": "oidc-sub-123",
+        },
+    )()
+    monkeypatch.setattr(auth.st, "user", user)
+
+    identity, rows = auth._extract_identity_from_streamlit_user()
+
+    assert identity["email"] == "oidc@example.com"
+    assert identity["display_name"] == "OIDC User"
+    assert identity["provider_sub"] == "oidc-sub-123"
+    assert rows[0]["status"] == "ok"
+
+
 def test_load_user_context_uses_okta_auth0_provider():
     user = type(
         "UserObj",
