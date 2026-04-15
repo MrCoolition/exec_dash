@@ -25,6 +25,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+NAV_POSITION = "sidebar"
+
 
 def _safe_user_logged_in() -> bool:
     try:
@@ -61,7 +63,7 @@ def main() -> None:
         ctx = load_user_context(streamlit_user)
         render_shell(ctx)
         pages = build_pages(ctx)
-        pg = st.navigation(pages, position="sidebar")
+        pg = st.navigation(pages, position=NAV_POSITION)
         pg.run()
     else:
         _render_login_screen()
