@@ -97,6 +97,54 @@ def _extract_identity_from_headers() -> tuple[dict[str, str], list[dict[str, str
     return {}, diagnostics
 
 
+def _extract_identity_from_streamlit_user() -> tuple[dict[str, str], list[dict[str, str]]]:
+    user = getattr(st, "user", None)
+    if user is None:
+        return {}, [
+            {
+                "source": "Streamlit OIDC user",
+                "status": "missing",
+                "details": "`st.user` is unavailable in this runtime.",
+            }
+        ]
+
+    is_logged_in = bool(getattr(user, "is_logged_in", False))
+    if not is_logged_in:
+        return {}, [
+            {
+                "source": "Streamlit OIDC user",
+                "status": "missing",
+                "details": "User is not logged in via Streamlit OIDC.",
+            }
+        ]
+
+    email = str(getattr(user, "email", "") or "").strip()
+    display_name = str(getattr(user, "name", "") or "").strip()
+    provider_sub = str(getattr(user, "sub", "") or "").strip() or email
+
+    if not provider_sub:
+        return {}, [
+            {
+                "source": "Streamlit OIDC user",
+                "status": "invalid",
+                "details": "Logged-in user missing both subject and email.",
+            }
+        ]
+
+    return {
+        "email": email,
+        "display_name": display_name or email or "User",
+        "provider_sub": provider_sub,
+        "roles": "",
+    }, [
+        {
+            "source": "Streamlit OIDC user",
+            "status": "ok",
+            "details": "Using authenticated Streamlit OIDC user identity.",
+        }
+    ]
+
+
 def _extract_identity_from_secrets() -> tuple[dict[str, str], list[dict[str, str]]]:
     identity = st.secrets.get("identity", {})
     if not isinstance(identity, dict) or not identity:
@@ -152,15 +200,24 @@ def ensure_authenticated_user() -> object:
     if header_identity:
         return type("HeaderUser", (), header_identity)()
 
+    oidc_identity, oidc_rows = _extract_identity_from_streamlit_user()
+    if oidc_identity:
+        st.info("Using Streamlit OIDC identity because upstream auth headers are unavailable.")
+        _render_auth_troubleshooting(header_rows + oidc_rows)
+        return type("OidcUser", (), oidc_identity)()
+
     secrets_identity, secrets_rows = _extract_identity_from_secrets()
     if secrets_identity:
         st.info("Using fallback identity from secrets because auth headers are unavailable.")
-        _render_auth_troubleshooting(header_rows + secrets_rows)
+        _render_auth_troubleshooting(header_rows + oidc_rows + secrets_rows)
         return type("SecretsUser", (), secrets_identity)()
 
     st.title("Executive Delivery Dashboard")
     st.error("Authentication identity was not provided by the Okta/Auth0 upstream proxy.")
-    _render_auth_troubleshooting(header_rows + secrets_rows)
+    st.write("If OIDC is configured in Streamlit secrets, use the login control below and retry.")
+    if st.button("Log in with OIDC", type="primary"):
+        st.login()
+    _render_auth_troubleshooting(header_rows + oidc_rows + secrets_rows)
     st.stop()
 
 
