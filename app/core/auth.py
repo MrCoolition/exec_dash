@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 
 import streamlit as st
 from streamlit.errors import StreamlitAuthError
@@ -149,7 +150,7 @@ def _extract_identity_from_streamlit_user() -> tuple[dict[str, str], list[dict[s
 
 def _extract_identity_from_secrets() -> tuple[dict[str, str], list[dict[str, str]]]:
     identity = st.secrets.get("identity", {})
-    if not isinstance(identity, dict) or not identity:
+    if not isinstance(identity, Mapping) or not identity:
         return {}, [
             {
                 "source": "[identity] secrets",
@@ -157,6 +158,7 @@ def _extract_identity_from_secrets() -> tuple[dict[str, str], list[dict[str, str
                 "details": "No fallback identity configured.",
             }
         ]
+    identity = dict(identity)
 
     email = str(identity.get("email", "")).strip()
     provider_sub = str(identity.get("provider_sub", "")).strip() or email

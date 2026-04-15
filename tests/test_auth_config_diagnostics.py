@@ -1,4 +1,5 @@
 from app.core import auth
+from tests.test_config import _as_mapping_section
 
 
 def test_extract_identity_from_headers(monkeypatch):
@@ -29,6 +30,24 @@ def test_extract_identity_from_secrets(monkeypatch):
 
     assert identity["email"] == "fallback@example.com"
     assert identity["provider_sub"] == "fallback@example.com"
+    assert rows[0]["status"] == "ok"
+
+
+def test_extract_identity_from_secrets_accepts_mapping_sections(monkeypatch):
+    monkeypatch.setattr(
+        auth.st,
+        "secrets",
+        {
+            "identity": _as_mapping_section(
+                {"email": "mapped@example.com", "display_name": "Mapped User"}
+            )
+        },
+    )
+
+    identity, rows = auth._extract_identity_from_secrets()
+
+    assert identity["email"] == "mapped@example.com"
+    assert identity["provider_sub"] == "mapped@example.com"
     assert rows[0]["status"] == "ok"
 
 
