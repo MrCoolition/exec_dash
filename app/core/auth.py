@@ -96,7 +96,36 @@ def render_auth_troubleshooting_panel(error_detail: str | None = None) -> None:
     )
 
 
+def _validate_auth_config(auth: dict[str, str]) -> list[str]:
+    missing_keys = [key for key in _REQUIRED_AUTH_KEYS if not str(auth.get(key, "")).strip()]
+    if missing_keys:
+        return [f"Missing required keys: {', '.join(missing_keys)}"]
+
+    redirect_uri = str(auth.get("redirect_uri", "")).strip()
+    metadata_url = str(auth.get("server_metadata_url", "")).strip()
+    redirect_parsed = urlsplit(redirect_uri)
+    metadata_parsed = urlsplit(metadata_url)
+
+    issues: list[str] = []
+    if not (redirect_parsed.scheme and redirect_parsed.netloc):
+        issues.append("redirect_uri must be an absolute URL")
+    if not (metadata_parsed.scheme and metadata_parsed.netloc):
+        issues.append("server_metadata_url must be an absolute URL")
+    return issues
+
+
 def login_with_auth0() -> None:
+    auth = load_auth_config()
+    auth_issues = _validate_auth_config(auth)
+    if auth_issues:
+        st.error(
+            "Authentication is not configured correctly. "
+            + "; ".join(auth_issues)
+            + "."
+        )
+        render_auth_troubleshooting_panel("; ".join(auth_issues))
+        return
+
     try:
         st.login("auth0")
     except StreamlitAuthError as exc:

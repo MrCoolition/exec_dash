@@ -91,6 +91,17 @@ def test_ensure_authenticated_user_returns_oidc_user(monkeypatch):
 
 def test_login_with_auth0_handles_streamlit_auth_error(monkeypatch):
     monkeypatch.setattr(
+        auth,
+        "load_auth_config",
+        lambda: {
+            "client_id": "id",
+            "client_secret": "secret",
+            "redirect_uri": "https://exec-dash.streamlit.app/oauth2callback",
+            "server_metadata_url": "https://example.auth0.com/.well-known/openid-configuration",
+            "cookie_secret": "super-secret-value",
+        },
+    )
+    monkeypatch.setattr(
         auth.st,
         "login",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(StreamlitAuthError("bad auth config")),
@@ -104,3 +115,28 @@ def test_login_with_auth0_handles_streamlit_auth_error(monkeypatch):
 
     assert captured_errors
     assert diagnostics_errors == ["bad auth config"]
+
+
+def test_login_with_auth0_blocks_invalid_config_before_redirect(monkeypatch):
+    monkeypatch.setattr(
+        auth,
+        "load_auth_config",
+        lambda: {"client_id": "abc", "client_secret": "def"},
+    )
+    login_called = {"value": False}
+    monkeypatch.setattr(
+        auth.st,
+        "login",
+        lambda *_args, **_kwargs: login_called.__setitem__("value", True),
+    )
+    captured_errors: list[str] = []
+    diagnostics_errors: list[str] = []
+    monkeypatch.setattr(auth.st, "error", lambda msg: captured_errors.append(msg))
+    monkeypatch.setattr(auth, "render_auth_troubleshooting_panel", lambda msg=None: diagnostics_errors.append(msg or ""))
+
+    auth.login_with_auth0()
+
+    assert captured_errors
+    assert "Missing required keys:" in captured_errors[0]
+    assert diagnostics_errors
+    assert login_called["value"] is False
