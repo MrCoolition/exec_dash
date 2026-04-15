@@ -140,3 +140,85 @@ def test_login_with_auth0_blocks_invalid_config_before_redirect(monkeypatch):
     assert "Missing required keys:" in captured_errors[0]
     assert diagnostics_errors
     assert login_called["value"] is False
+
+
+def test_login_with_auth0_blocks_legacy_only_secrets_shape(monkeypatch):
+    monkeypatch.setattr(
+        auth,
+        "load_auth_config",
+        lambda: {
+            "client_id": "id",
+            "client_secret": "secret",
+            "redirect_uri": "https://exec-dash.streamlit.app/oauth2callback",
+            "server_metadata_url": "https://example.auth0.com/.well-known/openid-configuration",
+            "cookie_secret": "cookie-secret",
+        },
+    )
+    monkeypatch.setattr(
+        auth.st,
+        "secrets",
+        {
+            "auth0": {
+                "client_id": "id",
+                "client_secret": "secret",
+                "domain": "example.auth0.com",
+                "redirect_uri": "https://exec-dash.streamlit.app/oauth2callback",
+            }
+        },
+    )
+    login_called = {"value": False}
+    monkeypatch.setattr(
+        auth.st,
+        "login",
+        lambda *_args, **_kwargs: login_called.__setitem__("value", True),
+    )
+    captured_errors: list[str] = []
+    monkeypatch.setattr(auth.st, "error", lambda msg: captured_errors.append(msg))
+    monkeypatch.setattr(auth, "render_auth_troubleshooting_panel", lambda *_args, **_kwargs: None)
+
+    auth.login_with_auth0()
+
+    assert captured_errors
+    assert "[auth] section" in captured_errors[0]
+    assert login_called["value"] is False
+
+
+def test_login_with_auth0_allows_canonical_streamlit_secrets_shape(monkeypatch):
+    monkeypatch.setattr(
+        auth,
+        "load_auth_config",
+        lambda: {
+            "client_id": "id",
+            "client_secret": "secret",
+            "redirect_uri": "https://exec-dash.streamlit.app/oauth2callback",
+            "server_metadata_url": "https://example.auth0.com/.well-known/openid-configuration",
+            "cookie_secret": "cookie-secret",
+        },
+    )
+    monkeypatch.setattr(
+        auth.st,
+        "secrets",
+        {
+            "auth": {
+                "redirect_uri": "https://exec-dash.streamlit.app/oauth2callback",
+                "cookie_secret": "cookie-secret",
+                "auth0": {
+                    "client_id": "id",
+                    "client_secret": "secret",
+                    "server_metadata_url": "https://example.auth0.com/.well-known/openid-configuration",
+                },
+            }
+        },
+    )
+    login_called = {"value": False}
+    monkeypatch.setattr(
+        auth.st,
+        "login",
+        lambda *_args, **_kwargs: login_called.__setitem__("value", True),
+    )
+    monkeypatch.setattr(auth.st, "error", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth, "render_auth_troubleshooting_panel", lambda *_args, **_kwargs: None)
+
+    auth.login_with_auth0()
+
+    assert login_called["value"] is True
