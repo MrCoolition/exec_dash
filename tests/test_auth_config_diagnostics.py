@@ -1,4 +1,5 @@
 from app.core import auth
+from streamlit.errors import StreamlitAuthError
 
 
 def test_sync_user_from_oidc_for_logged_out_user(monkeypatch):
@@ -86,3 +87,17 @@ def test_ensure_authenticated_user_returns_oidc_user(monkeypatch):
 
     assert auth_user.provider_sub == "oidc-sub-123"
     assert auth_user.display_name == "OIDC User"
+
+
+def test_login_with_auth0_handles_streamlit_auth_error(monkeypatch):
+    monkeypatch.setattr(
+        auth.st,
+        "login",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(StreamlitAuthError("bad auth config")),
+    )
+    captured_errors: list[str] = []
+    monkeypatch.setattr(auth.st, "error", lambda msg: captured_errors.append(msg))
+
+    auth.login_with_auth0()
+
+    assert captured_errors
