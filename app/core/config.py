@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import tomllib
 from urllib.parse import quote_plus
@@ -57,7 +58,7 @@ def _parse_auth_from_raw_string(raw: str) -> dict:
 def load_auth_config() -> dict:
     auth = st.secrets.get("auth", {})
     resolved: dict
-    if isinstance(auth, dict):
+    if isinstance(auth, Mapping):
         resolved = dict(auth)
     elif isinstance(auth, str):
         resolved = _parse_auth_from_raw_string(auth)
@@ -68,7 +69,7 @@ def load_auth_config() -> dict:
     # map [auth0] into the Streamlit [auth] schema when [auth] is missing or
     # partially configured.
     legacy_auth0 = st.secrets.get("auth0", {})
-    if isinstance(legacy_auth0, dict) and legacy_auth0:
+    if isinstance(legacy_auth0, Mapping) and legacy_auth0:
         if not resolved.get("redirect_uri"):
             legacy_redirect = (
                 legacy_auth0.get("redirect_uri")
@@ -102,7 +103,7 @@ def load_auth_config() -> dict:
     # deployments operable.
     if not resolved.get("cookie_secret"):
         db = st.secrets.get("database", {})
-        if isinstance(db, dict) and db.get("NOOKIE_PASS"):
+        if isinstance(db, Mapping) and db.get("NOOKIE_PASS"):
             resolved["cookie_secret"] = db["NOOKIE_PASS"]
     if not resolved.get("cookie_secret") and resolved.get("client_secret"):
         resolved["cookie_secret"] = resolved["client_secret"]
