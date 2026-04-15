@@ -4,6 +4,7 @@ import json
 
 import streamlit as st
 
+from app.core.config import load_auth_config
 from app.models.pydantic_models import User
 from app.services.user_context import UserContext
 
@@ -195,6 +196,19 @@ def _render_auth_troubleshooting(rows: list[dict[str, str]]) -> None:
         st.table(rows)
 
 
+def _oidc_login_readiness() -> tuple[bool, str]:
+    auth = load_auth_config()
+    required_fields = ("client_id", "client_secret", "server_metadata_url", "redirect_uri", "cookie_secret")
+    missing = [field for field in required_fields if not str(auth.get(field, "")).strip()]
+    if missing:
+        missing_list = ", ".join(missing)
+        return False, (
+            "OIDC login is not available because Streamlit auth secrets are incomplete. "
+            f"Missing required keys: {missing_list}."
+        )
+    return True, ""
+
+
 def ensure_authenticated_user() -> object:
     header_identity, header_rows = _extract_identity_from_headers()
     if header_identity:
@@ -215,7 +229,10 @@ def ensure_authenticated_user() -> object:
     st.title("Executive Delivery Dashboard")
     st.error("Authentication identity was not provided by the Okta/Auth0 upstream proxy.")
     st.write("If OIDC is configured in Streamlit secrets, use the login control below and retry.")
-    if st.button("Log in with OIDC", type="primary"):
+    oidc_ready, oidc_reason = _oidc_login_readiness()
+    if not oidc_ready:
+        st.warning(oidc_reason)
+    if st.button("Log in with OIDC", type="primary", disabled=not oidc_ready):
         st.login()
     _render_auth_troubleshooting(header_rows + oidc_rows + secrets_rows)
     st.stop()

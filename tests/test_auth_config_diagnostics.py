@@ -69,3 +69,50 @@ def test_load_user_context_uses_okta_auth0_provider():
 
     assert ctx.user.provider == "okta-auth0"
     assert "admin" in ctx.role_codes
+
+
+def test_oidc_login_readiness_reports_missing_cookie_secret(monkeypatch):
+    monkeypatch.setattr(
+        auth,
+        "load_auth_config",
+        lambda: {
+            "client_id": "id",
+            "client_secret": "secret",
+            "server_metadata_url": "https://tenant/.well-known/openid-configuration",
+            "redirect_uri": "https://example.com/callback",
+        },
+    )
+
+    ready, reason = auth._oidc_login_readiness()
+
+    assert not ready
+    assert "cookie_secret" in reason
+
+
+def test_ensure_authenticated_user_does_not_call_login_when_oidc_not_ready(monkeypatch):
+    monkeypatch.setattr(auth, "_extract_identity_from_headers", lambda: ({}, []))
+    monkeypatch.setattr(auth, "_extract_identity_from_streamlit_user", lambda: ({}, []))
+    monkeypatch.setattr(auth, "_extract_identity_from_secrets", lambda: ({}, []))
+    monkeypatch.setattr(auth, "_render_auth_troubleshooting", lambda _rows: None)
+    monkeypatch.setattr(auth, "_oidc_login_readiness", lambda: (False, "missing config"))
+
+    monkeypatch.setattr(auth.st, "title", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "error", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "write", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "warning", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(auth.st, "button", lambda *_args, **_kwargs: False)
+
+    called = {"login": False}
+
+    def _login():
+        called["login"] = True
+
+    monkeypatch.setattr(auth.st, "login", _login)
+    monkeypatch.setattr(auth.st, "stop", lambda: (_ for _ in ()).throw(RuntimeError("stopped")))
+
+    try:
+        auth.ensure_authenticated_user()
+    except RuntimeError as exc:
+        assert str(exc) == "stopped"
+
+    assert called["login"] is False
