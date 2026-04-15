@@ -8,6 +8,7 @@ from app.core.auth import (
     ensure_authenticated_user,
     load_user_context,
     login_with_auth0,
+    render_auth_troubleshooting_panel,
     sync_user_from_oidc,
 )
 from app.core.db import init_engine
@@ -38,8 +39,31 @@ def _render_login_screen() -> None:
     st.button("Login with Auth0", on_click=login_with_auth0)
 
 
+def _oauth_callback_error_detail() -> str | None:
+    query_params = st.query_params
+    code = query_params.get("code")
+    state = query_params.get("state")
+    oauth_error = query_params.get("error")
+    oauth_error_description = query_params.get("error_description")
+
+    if oauth_error:
+        if oauth_error_description:
+            return f"{oauth_error}: {oauth_error_description}"
+        return str(oauth_error)
+    if code and state:
+        return "Received OAuth callback parameters, but no authenticated session was established."
+    return None
+
+
 def main() -> None:
     if not _safe_user_logged_in():
+        callback_error_detail = _oauth_callback_error_detail()
+        if callback_error_detail:
+            st.error(
+                "Login returned from Auth0, but the app could not complete sign in. "
+                "Check auth configuration and try again."
+            )
+            render_auth_troubleshooting_panel(callback_error_detail)
         _render_login_screen()
         st.stop()
 
