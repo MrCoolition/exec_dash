@@ -8,7 +8,6 @@ from app.core.auth import (
     ensure_authenticated_user,
     load_user_context,
     login_with_auth0,
-    render_auth_troubleshooting_panel,
     sync_user_from_oidc,
 )
 from app.core.db import init_engine
@@ -31,14 +30,12 @@ def _safe_user_logged_in() -> bool:
         return bool(st.user.is_logged_in)
     except (StreamlitAuthError, StreamlitSecretNotFoundError) as exc:
         st.error(f"Authentication bootstrap failed: {exc}")
-        render_auth_troubleshooting_panel(str(exc))
         return False
 
 
 def _render_login_screen() -> None:
     st.title(APP_NAME)
     st.button("Login with Auth0", on_click=login_with_auth0)
-    render_auth_troubleshooting_panel()
 
 
 def main() -> None:
@@ -49,8 +46,6 @@ def main() -> None:
     sync_user_from_oidc()
 
     if st.session_state.get("authenticated", False):
-        st.success("Hello world")
-
         with st.sidebar:
             st.write(f"🔌 Logged in as: {st.session_state['username']}")
             if st.button("Logout"):
