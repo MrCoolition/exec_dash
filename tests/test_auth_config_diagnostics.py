@@ -34,3 +34,28 @@ def test_missing_auth_requirements_for_inline_provider(monkeypatch):
     )
     missing = auth._missing_auth_requirements()
     assert missing == ["[auth].client_secret", "[auth].server_metadata_url"]
+
+
+def test_legacy_auth0_hint_detects_migratable_config(monkeypatch):
+    monkeypatch.setattr(
+        auth.st,
+        "secrets",
+        {
+            "auth0": {
+                "domain": "tenant.auth0.com",
+                "client_id": "id",
+                "client_secret": "secret",
+            }
+        },
+    )
+
+    hint = auth._legacy_auth0_hint()
+
+    assert hint is not None
+    assert "[auth]" in hint
+
+
+def test_legacy_auth0_hint_ignores_incomplete_legacy_config(monkeypatch):
+    monkeypatch.setattr(auth.st, "secrets", {"auth0": {"domain": "tenant.auth0.com"}})
+
+    assert auth._legacy_auth0_hint() is None
