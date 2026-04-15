@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import tomllib
 from urllib.parse import quote_plus
 
 import streamlit as st
@@ -25,6 +26,62 @@ class AppConfig:
     auth_provider: str | None
     database: DatabaseConfig
     ado: AdoConfig
+
+
+def _parse_auth_from_raw_string(raw: str) -> dict:
+    content = raw.strip()
+    if not content:
+        return {}
+
+    # Some deploy environments inject TOML as a single-line string with escaped
+    # newlines (e.g. "[auth]\\nclient_id = ..."). Decode that shape first.
+    if "\\n" in content:
+        content = content.replace("\\n", "\n")
+
+    parse_candidates = [content]
+    if "[auth]" not in content:
+        parse_candidates.append(f"[auth]\n{content}")
+
+    for candidate in parse_candidates:
+        try:
+            parsed = tomllib.loads(candidate)
+        except tomllib.TOMLDecodeError:
+            continue
+
+        auth = parsed.get("auth")
+        if isinstance(auth, dict):
+            return auth
+
+    return {}
+
+
+def load_auth_config() -> dict:
+    auth = st.secrets.get("auth", {})
+    resolved: dict
+    if isinstance(auth, dict):
+        resolved = dict(auth)
+    elif isinstance(auth, str):
+        resolved = _parse_auth_from_raw_string(auth)
+    else:
+        resolved = {}
+
+    # Backward-compatible Auth0 shorthand.
+    domain = resolved.get("domain")
+    if domain and not resolved.get("server_metadata_url"):
+        normalized_domain = str(domain).strip().rstrip("/")
+        if normalized_domain:
+            if normalized_domain.startswith(("http://", "https://")):
+                base = normalized_domain
+            else:
+                base = f"https://{normalized_domain}"
+            resolved["server_metadata_url"] = f"{base}/.well-known/openid-configuration"
+
+    # Streamlit OIDC needs cookie_secret; use an explicit value when possible,
+    # but keep legacy configs operable by falling back to client_secret.
+    if not resolved.get("cookie_secret") and resolved.get("client_secret"):
+        resolved["cookie_secret"] = resolved["client_secret"]
+
+    return resolved
 
 
 def _resolve_auth_provider(auth: dict) -> str | None:
@@ -56,7 +113,7 @@ def load_config() -> AppConfig:
     db = st.secrets.get("database", {})
     aiven = st.secrets.get("aiven", {})
     ado = st.secrets.get("azure_devops", {})
-    auth = st.secrets.get("auth", {})
+    auth = load_auth_config()
 
     database_url = db.get("url")
     if not database_url and db.get("AIVEN_HOST"):

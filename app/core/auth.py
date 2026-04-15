@@ -3,13 +3,13 @@ from __future__ import annotations
 import streamlit as st
 from streamlit.errors import StreamlitAuthError
 
-from app.core.config import load_config
+from app.core.config import load_auth_config, load_config
 from app.models.pydantic_models import User
 from app.services.user_context import UserContext
 
 
 def _missing_auth_requirements() -> list[str]:
-    auth = st.secrets.get("auth", {})
+    auth = load_auth_config()
     missing: list[str] = []
     if not isinstance(auth, dict):
         return ["[auth] block"]
@@ -60,7 +60,7 @@ def _has_value(config: dict, key: str) -> bool:
 
 
 def _render_auth_diagnostics(error: Exception | None = None) -> None:
-    auth = st.secrets.get("auth", {})
+    auth = load_auth_config()
     named_provider_configs = {
         key: value
         for key, value in auth.items()
