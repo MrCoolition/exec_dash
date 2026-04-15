@@ -8,12 +8,6 @@ from app.ui.widgets import freshness_badge
 
 
 def configure_page() -> None:
-    st.set_page_config(
-        page_title="Executive Delivery Dashboard",
-        page_icon=":material/dashboard:",
-        layout="wide",
-        initial_sidebar_state="collapsed",
-    )
     inject_theme_overrides()
 
 
@@ -25,5 +19,5 @@ def render_shell(ctx: UserContext) -> None:
     with cols[1]:
         st.caption(f"Roles: {', '.join(sorted(ctx.role_codes))}")
     with cols[2]:
-        st.caption("Auth: Okta/Auth0 upstream")
+        st.caption("Auth: Streamlit OIDC/Auth0")
     freshness_badge("fresh", "just now")

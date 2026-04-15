@@ -2,22 +2,51 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.core.auth import ensure_authenticated_user, load_user_context
+from app.core.auth import ensure_authenticated_user, load_user_context, sync_user_from_oidc
 from app.core.db import init_engine
 from app.core.logging import configure_logging
 from app.ui.layout import configure_page, render_shell
 from app.ui.pages import build_pages
 
 
+st.set_page_config(
+    page_title="Cool GPT",
+    page_icon="🧊",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+if not st.user.is_logged_in:
+    st.title("Cool GPT")
+    st.button("Login with Auth0", on_click=st.login, args=("auth0",))
+    st.stop()
+
+
 configure_logging()
 configure_page()
 init_engine()
 
-streamlit_user = ensure_authenticated_user()
-ctx = load_user_context(streamlit_user)
 
-render_shell(ctx)
-pages = build_pages(ctx)
+def main() -> None:
+    sync_user_from_oidc()
 
-pg = st.navigation(pages, position="top")
-pg.run()
+    if st.session_state["authenticated"]:
+        with st.sidebar:
+            st.write(f"🔌 Logged in as: {st.session_state['username']}")
+            if st.button("Logout"):
+                st.logout()
+                st.rerun()
+
+        streamlit_user = ensure_authenticated_user()
+        ctx = load_user_context(streamlit_user)
+        render_shell(ctx)
+        pages = build_pages(ctx)
+        pg = st.navigation(pages, position="top")
+        pg.run()
+    else:
+        st.title("Cool GPT")
+        st.button("Login with Auth0", on_click=st.login, args=("auth0",))
+
+
+if __name__ == "__main__":
+    main()
