@@ -144,3 +144,29 @@ def test_load_auth_config_keeps_full_metadata_url_if_already_well_known(monkeypa
     auth = config.load_auth_config()
 
     assert auth["server_metadata_url"] == "https://tenant.example.com/.well-known/openid-configuration"
+
+
+def test_load_auth_config_reads_nested_auth_provider_block(monkeypatch):
+    monkeypatch.setattr(
+        config.st,
+        "secrets",
+        {
+            "auth": {
+                "redirect_uri": "https://example.com/oauth2callback",
+                "cookie_secret": "cookie-secret",
+                "auth0": {
+                    "client_id": "nested-id",
+                    "client_secret": "nested-secret",
+                    "server_metadata_url": "https://tenant.example.com/.well-known/openid-configuration",
+                },
+            }
+        },
+    )
+
+    auth = config.load_auth_config()
+
+    assert auth["redirect_uri"] == "https://example.com/oauth2callback"
+    assert auth["cookie_secret"] == "cookie-secret"
+    assert auth["client_id"] == "nested-id"
+    assert auth["client_secret"] == "nested-secret"
+    assert auth["server_metadata_url"] == "https://tenant.example.com/.well-known/openid-configuration"

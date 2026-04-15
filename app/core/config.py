@@ -65,6 +65,19 @@ def load_auth_config() -> dict:
     else:
         resolved = {}
 
+    # Streamlit's provider-aware OIDC shape nests credentials under
+    # [auth.<provider>] (for this app: [auth.auth0]).
+    provider_block = resolved.get("auth0", {})
+    if isinstance(provider_block, Mapping):
+        if not resolved.get("client_id") and provider_block.get("client_id"):
+            resolved["client_id"] = provider_block["client_id"]
+        if not resolved.get("client_secret") and provider_block.get("client_secret"):
+            resolved["client_secret"] = provider_block["client_secret"]
+        if not resolved.get("server_metadata_url") and provider_block.get("server_metadata_url"):
+            resolved["server_metadata_url"] = provider_block["server_metadata_url"]
+        if not resolved.get("domain") and provider_block.get("domain"):
+            resolved["domain"] = provider_block["domain"]
+
     # Legacy Auth0 block compatibility:
     # map [auth0] into the Streamlit [auth] schema when [auth] is missing or
     # partially configured.
