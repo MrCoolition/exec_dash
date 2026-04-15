@@ -74,3 +74,21 @@ def test_missing_auth_requirements_accepts_auth_domain_shorthand(monkeypatch):
     )
 
     assert auth._missing_auth_requirements() == []
+
+
+def test_missing_auth_requirements_accepts_legacy_auth0_block(monkeypatch):
+    monkeypatch.setattr(
+        auth.st,
+        "secrets",
+        {
+            "auth0": {
+                "domain": "tenant.auth0.com",
+                "client_id": "id",
+                "client_secret": "secret",
+                "redirect_uri": "https://example.com/",
+            },
+            "database": {"NOOKIE_PASS": "cookie-secret"},
+        },
+    )
+
+    assert auth._missing_auth_requirements() == []

@@ -65,6 +65,28 @@ def load_auth_config() -> dict:
     else:
         resolved = {}
 
+    # Legacy Auth0 block compatibility:
+    # map [auth0] into the Streamlit [auth] schema when [auth] is missing or
+    # partially configured.
+    legacy_auth0 = st.secrets.get("auth0", {})
+    if isinstance(legacy_auth0, dict) and legacy_auth0:
+        if not resolved.get("redirect_uri"):
+            legacy_redirect = (
+                legacy_auth0.get("redirect_uri")
+                or legacy_auth0.get("callback_url")
+                or legacy_auth0.get("redirectURL")
+            )
+            if legacy_redirect:
+                resolved["redirect_uri"] = legacy_redirect
+
+        if not resolved.get("client_id") and legacy_auth0.get("client_id"):
+            resolved["client_id"] = legacy_auth0["client_id"]
+        if not resolved.get("client_secret") and legacy_auth0.get("client_secret"):
+            resolved["client_secret"] = legacy_auth0["client_secret"]
+
+        if not resolved.get("server_metadata_url") and legacy_auth0.get("domain"):
+            resolved["domain"] = legacy_auth0["domain"]
+
     # Backward-compatible Auth0 shorthand.
     domain = resolved.get("domain")
     if domain and not resolved.get("server_metadata_url"):
@@ -77,7 +99,12 @@ def load_auth_config() -> dict:
             resolved["server_metadata_url"] = f"{base}/.well-known/openid-configuration"
 
     # Streamlit OIDC needs cookie_secret; use an explicit value when possible,
-    # but keep legacy configs operable by falling back to client_secret.
+    # then database.NOOKIE_PASS, and finally client_secret to keep legacy
+    # deployments operable.
+    if not resolved.get("cookie_secret"):
+        db = st.secrets.get("database", {})
+        if isinstance(db, dict) and db.get("NOOKIE_PASS"):
+            resolved["cookie_secret"] = db["NOOKIE_PASS"]
     if not resolved.get("cookie_secret") and resolved.get("client_secret"):
         resolved["cookie_secret"] = resolved["client_secret"]
 
