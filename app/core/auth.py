@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from urllib.parse import urlsplit
 
 import streamlit as st
-from streamlit.errors import StreamlitAuthError
+from streamlit.errors import StreamlitAuthError, StreamlitSecretNotFoundError
 
 from app.core.config import load_auth_config
 from app.models.pydantic_models import User
@@ -114,9 +115,46 @@ def _validate_auth_config(auth: dict[str, str]) -> list[str]:
     return issues
 
 
+def _validate_streamlit_secrets_shape() -> list[str]:
+    """Ensure secrets are in Streamlit's provider-aware OIDC structure.
+
+    `load_auth_config()` supports compatibility fallbacks (legacy `[auth0]` block,
+    flattened keys, etc.) for diagnostics, but `st.login("auth0")` still reads the
+    canonical `[auth]` + `[auth.auth0]` sections directly from `st.secrets`.
+    """
+
+    issues: list[str] = []
+    try:
+        auth_section = st.secrets.get("auth")
+    except StreamlitSecretNotFoundError:
+        return []
+    if not isinstance(auth_section, Mapping):
+        return [
+            "Streamlit secrets must include an [auth] section (legacy [auth0]-only config is not enough)"
+        ]
+
+    provider_section = auth_section.get("auth0")
+    if not isinstance(provider_section, Mapping):
+        issues.append("Streamlit secrets must include an [auth.auth0] provider block")
+        return issues
+
+    if not str(auth_section.get("redirect_uri", "")).strip():
+        issues.append("[auth].redirect_uri is required")
+    if not str(auth_section.get("cookie_secret", "")).strip():
+        issues.append("[auth].cookie_secret is required")
+    if not str(provider_section.get("client_id", "")).strip():
+        issues.append("[auth.auth0].client_id is required")
+    if not str(provider_section.get("client_secret", "")).strip():
+        issues.append("[auth.auth0].client_secret is required")
+    if not str(provider_section.get("server_metadata_url", "")).strip():
+        issues.append("[auth.auth0].server_metadata_url is required")
+    return issues
+
+
 def login_with_auth0() -> None:
     auth = load_auth_config()
     auth_issues = _validate_auth_config(auth)
+    auth_issues.extend(_validate_streamlit_secrets_shape())
     if auth_issues:
         st.error(
             "Authentication is not configured correctly. "
