@@ -25,18 +25,20 @@ def _build_suggested_auth_toml(auth: dict[str, str], fallback_base_url: str) -> 
     return "\n".join(
         [
             "[auth]",
-            f'client_id = "{auth.get("client_id") or "<YOUR_CLIENT_ID>"}"',
-            f'client_secret = "{_mask_secret(auth["client_secret"]) if auth.get("client_secret") else "<YOUR_CLIENT_SECRET>"}"',
             f'redirect_uri = "{redirect_uri}"',
-            (
-                f'server_metadata_url = "{auth["server_metadata_url"]}"'
-                if auth.get("server_metadata_url")
-                else 'server_metadata_url = "https://<YOUR_DOMAIN>/.well-known/openid-configuration"'
-            ),
             (
                 f'cookie_secret = "{_mask_secret(auth["cookie_secret"])}"'
                 if auth.get("cookie_secret")
                 else 'cookie_secret = "<A_LONG_RANDOM_SECRET>"'
+            ),
+            "",
+            "[auth.auth0]",
+            f'client_id = "{auth.get("client_id") or "<YOUR_CLIENT_ID>"}"',
+            f'client_secret = "{_mask_secret(auth["client_secret"]) if auth.get("client_secret") else "<YOUR_CLIENT_SECRET>"}"',
+            (
+                f'server_metadata_url = "{auth["server_metadata_url"]}"'
+                if auth.get("server_metadata_url")
+                else 'server_metadata_url = "https://<YOUR_DOMAIN>/.well-known/openid-configuration"'
             ),
         ]
     )
