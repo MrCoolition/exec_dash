@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.core.auth import ensure_authenticated_user, load_user_context, sync_user_from_oidc
+from app.core.auth import APP_NAME, ensure_authenticated_user, load_user_context, login_with_auth0, sync_user_from_oidc
 from app.core.db import init_engine
 from app.core.logging import configure_logging
 from app.ui.layout import configure_page, render_shell
@@ -10,15 +10,15 @@ from app.ui.pages import build_pages
 
 
 st.set_page_config(
-    page_title="Cool GPT",
+    page_title=APP_NAME,
     page_icon="🧊",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 if not st.user.is_logged_in:
-    st.title("Cool GPT")
-    st.button("Login with Auth0", on_click=st.login, args=("auth0",))
+    st.title(APP_NAME)
+    st.button("Login with Auth0", on_click=login_with_auth0)
     st.stop()
 
 
@@ -44,8 +44,8 @@ def main() -> None:
         pg = st.navigation(pages, position="top")
         pg.run()
     else:
-        st.title("Cool GPT")
-        st.button("Login with Auth0", on_click=st.login, args=("auth0",))
+        st.title(APP_NAME)
+        st.button("Login with Auth0", on_click=login_with_auth0)
 
 
 if __name__ == "__main__":

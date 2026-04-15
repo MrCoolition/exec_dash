@@ -1,9 +1,23 @@
 from __future__ import annotations
 
 import streamlit as st
+from streamlit.errors import StreamlitAuthError
 
 from app.models.pydantic_models import User
 from app.services.user_context import UserContext
+
+
+APP_NAME = "Impower AI"
+
+
+def login_with_auth0() -> None:
+    try:
+        st.login("auth0")
+    except StreamlitAuthError:
+        st.error(
+            "Authentication is not configured correctly. "
+            "Please add valid [auth] / [auth0] credentials in Streamlit secrets."
+        )
 
 
 def sync_user_from_oidc() -> None:
@@ -33,8 +47,8 @@ def sync_user_from_oidc() -> None:
 def ensure_authenticated_user() -> object:
     sync_user_from_oidc()
     if not st.session_state.get("authenticated", False):
-        st.title("Cool GPT")
-        st.button("Login with Auth0", on_click=st.login, args=("auth0",), type="primary")
+        st.title(APP_NAME)
+        st.button("Login with Auth0", on_click=login_with_auth0, type="primary")
         st.stop()
 
     return type(
