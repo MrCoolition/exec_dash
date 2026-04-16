@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 from streamlit.errors import StreamlitAuthError, StreamlitSecretNotFoundError
 
+from app.core.config import load_auth_config
 from app.core.auth import APP_NAME, ensure_authenticated_user, load_user_context, login_with_auth0, sync_user_from_oidc
 from app.core.db import init_engine
 from app.core.error_reporting import render_internal_error
@@ -27,9 +28,25 @@ def _safe_user_logged_in() -> bool:
         return False
 
 
+def _auth_diagnostics() -> tuple[list[str], bool]:
+    auth = load_auth_config()
+    required = ("client_id", "client_secret", "server_metadata_url", "redirect_uri", "cookie_secret")
+    missing = [key for key in required if not str(auth.get(key, "")).strip()]
+    callback_failed = bool(st.query_params.get("code") or st.query_params.get("error"))
+    return missing, callback_failed
+
+
 def render_clean_login_screen() -> None:
     st.title(APP_NAME)
     st.caption("Executive reporting command center")
+    missing, callback_failed = _auth_diagnostics()
+    if callback_failed:
+        st.warning(
+            "Sign-in callback was received but session was not created. "
+            "Verify your Auth0 callback URL exactly matches this app URL + /oauth2callback."
+        )
+    if missing:
+        st.info("OIDC config appears incomplete: " + ", ".join(missing))
     st.button("Login with Auth0", on_click=login_with_auth0, type="primary")
     st.caption("Use your company account.")
 
