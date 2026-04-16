@@ -8,6 +8,17 @@ from app.repositories.portfolios import get_portfolio_by_program
 from app.repositories.programs import list_programs
 
 
+PROGRAM_PAGE_PATH = "app/ui/pages/program.py"
+
+
+def open_program(program_id: str) -> None:
+    st.session_state.selected_program_id = program_id
+    try:
+        st.switch_page(PROGRAM_PAGE_PATH)
+    except Exception:
+        pass
+
+
 def ensure_sidebar_state() -> dict:
     programs = list_programs()
     if not programs:
@@ -18,18 +29,22 @@ def ensure_sidebar_state() -> dict:
     if "reporting_date" not in st.session_state:
         st.session_state.reporting_date = dt.date.today()
 
-    selected_id = st.sidebar.selectbox(
-        "Program",
-        options=[str(p["id"]) for p in programs],
-        format_func=lambda pid: next((p["name"] for p in programs if str(p["id"]) == pid), pid),
-        key="selected_program_id",
-    )
+    with st.sidebar:
+        st.markdown("#### Reporting Context")
+        selected_id = st.selectbox(
+            "Program",
+            options=[str(p["id"]) for p in programs],
+            format_func=lambda pid: next((p["name"] for p in programs if str(p["id"]) == pid), pid),
+            key="selected_program_id",
+        )
+        st.date_input("Reporting Week Ending", key="reporting_date")
 
-    st.sidebar.date_input("Reporting Date", key="reporting_date")
     selected_program = next((p for p in programs if str(p["id"]) == str(selected_id)), programs[0])
     portfolio = get_portfolio_by_program(str(selected_program["id"]))
-    st.sidebar.caption(f"Portfolio: {(portfolio or {}).get('name', 'Unknown')}")
-    st.sidebar.caption(f"Program: {selected_program['name']}")
+
+    with st.sidebar:
+        st.caption(f"Portfolio: {(portfolio or {}).get('name', 'Unknown')}")
+        st.caption(f"Program: {selected_program['name']}")
 
     return {
         "programs": programs,

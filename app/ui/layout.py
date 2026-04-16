@@ -12,12 +12,11 @@ def configure_page() -> None:
 
 
 def render_shell(ctx: UserContext) -> None:
-    st.logo("https://streamlit.io/images/brand/streamlit-logo-primary-colormark-darktext.png")
-    cols = st.columns([3, 3, 2])
+    cols = st.columns([4, 3, 2])
     with cols[0]:
-        st.caption(f"User: {ctx.user.display_name or ctx.user.email}")
+        st.markdown("### Executive Reporting Dashboard")
     with cols[1]:
+        st.caption(f"User: {ctx.user.display_name or ctx.user.email or 'User'}")
         st.caption(f"Roles: {', '.join(sorted(ctx.role_codes))}")
     with cols[2]:
-        st.caption("Auth: Streamlit OIDC/Auth0")
-    freshness_badge("fresh", "just now")
+        freshness_badge("Refreshed", "just now")
