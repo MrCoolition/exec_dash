@@ -13,3 +13,34 @@ def test_main_unauthenticated_renders_clean_login(monkeypatch):
         streamlit_app.main()
 
     assert called["login"] is True
+
+
+def test_auth_diagnostics_detects_missing_fields(monkeypatch):
+    monkeypatch.setattr(streamlit_app, "load_auth_config", lambda: {"client_id": "id"})
+    monkeypatch.setattr(streamlit_app.st, "query_params", {})
+
+    missing, callback_failed = streamlit_app._auth_diagnostics()
+
+    assert callback_failed is False
+    assert "client_secret" in missing
+    assert "redirect_uri" in missing
+
+
+def test_auth_diagnostics_detects_callback_params(monkeypatch):
+    monkeypatch.setattr(
+        streamlit_app,
+        "load_auth_config",
+        lambda: {
+            "client_id": "id",
+            "client_secret": "secret",
+            "server_metadata_url": "https://tenant.example.com/.well-known/openid-configuration",
+            "redirect_uri": "https://example.com/oauth2callback",
+            "cookie_secret": "cookie",
+        },
+    )
+    monkeypatch.setattr(streamlit_app.st, "query_params", {"code": "abc123"})
+
+    missing, callback_failed = streamlit_app._auth_diagnostics()
+
+    assert missing == []
+    assert callback_failed is True
