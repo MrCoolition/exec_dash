@@ -23,3 +23,14 @@ def get_portfolio_by_program(program_id: str) -> dict | None:
         """,
         {"program_id": program_id},
     )
+
+
+def get_portfolio(portfolio_id: str) -> dict | None:
+    return fetch_one(
+        """
+        SELECT id, name, owner_name, description
+        FROM portfolio
+        WHERE id = :portfolio_id
+        """,
+        {"portfolio_id": portfolio_id},
+    )

@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import text
 
 from app.db import connection, fetch_all, fetch_one
+from app.ui.exec_formatters import has_text
 
 
 STATUS_OPTIONS = {"On Track", "Needs Attention", "At Risk"}
@@ -14,7 +15,55 @@ TREND_OPTIONS = {"Up", "Flat", "Down"}
 RISK_SEVERITY_OPTIONS = {"High", "Medium", "Low", "DEP"}
 
 
-def _validate_payload(payload: dict[str, Any]) -> None:
+def _clean_milestones(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cleaned: list[dict[str, Any]] = []
+    for row in rows:
+        if has_text(row.get("milestone_name")) or row.get("planned_date") or row.get("forecast_date"):
+            cleaned.append(
+                {
+                    "milestone_name": (row.get("milestone_name") or "").strip() or None,
+                    "planned_date": row.get("planned_date"),
+                    "forecast_date": row.get("forecast_date"),
+                    "status": (row.get("status") or "").strip() or None,
+                    "comment": (row.get("comment") or "").strip() or None,
+                }
+            )
+    return cleaned
+
+
+def _clean_risks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cleaned: list[dict[str, Any]] = []
+    for row in rows:
+        if has_text(row.get("risk_title")) or has_text(row.get("description")):
+            cleaned.append(
+                {
+                    "severity": (row.get("severity") or "").strip() or None,
+                    "risk_title": (row.get("risk_title") or "").strip() or None,
+                    "owner_name": (row.get("owner_name") or "").strip() or None,
+                    "target_date": row.get("target_date"),
+                    "description": (row.get("description") or "").strip() or None,
+                    "mitigation": (row.get("mitigation") or "").strip() or None,
+                }
+            )
+    return cleaned
+
+
+def _clean_decisions(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cleaned: list[dict[str, Any]] = []
+    for row in rows:
+        if has_text(row.get("decision_topic")):
+            cleaned.append(
+                {
+                    "decision_topic": (row.get("decision_topic") or "").strip(),
+                    "required_by": row.get("required_by"),
+                    "impact_if_unresolved": (row.get("impact_if_unresolved") or "").strip() or None,
+                    "recommendation": (row.get("recommendation") or "").strip() or None,
+                }
+            )
+    return cleaned
+
+
+def _validate_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if not (0 <= int(payload["percent_complete"]) <= 100):
         raise ValueError("Percent complete must be between 0 and 100")
     if payload["overall_status"] not in STATUS_OPTIONS:
@@ -23,9 +72,16 @@ def _validate_payload(payload: dict[str, Any]) -> None:
         raise ValueError("Invalid phase")
     if payload["trend"] not in TREND_OPTIONS:
         raise ValueError("Invalid trend")
+
+    payload = {**payload}
+    payload["milestones"] = _clean_milestones(payload.get("milestones", []))
+    payload["risks"] = _clean_risks(payload.get("risks", []))
+    payload["decisions"] = _clean_decisions(payload.get("decisions", []))
+
     for risk in payload.get("risks", []):
-        if risk.get("severity") not in RISK_SEVERITY_OPTIONS:
+        if risk.get("severity") and risk.get("severity") not in RISK_SEVERITY_OPTIONS:
             raise ValueError("Invalid risk severity")
+    return payload
 
 
 def get_weekly_update(program_id: str, week_ending: date) -> dict | None:
@@ -182,7 +238,7 @@ def _replace_children(conn, weekly_update_id: str, payload: dict[str, Any]) -> N
 
 
 def save_weekly_update_draft(payload: dict[str, Any]) -> str:
-    _validate_payload(payload)
+    payload = _validate_payload(payload)
     with connection() as conn:
         weekly_update_id = _upsert_weekly_update(conn, payload, "draft")
         _replace_children(conn, weekly_update_id, payload)
@@ -190,7 +246,7 @@ def save_weekly_update_draft(payload: dict[str, Any]) -> str:
 
 
 def submit_weekly_update(payload: dict[str, Any]) -> str:
-    _validate_payload(payload)
+    payload = _validate_payload(payload)
     with connection() as conn:
         weekly_update_id = _upsert_weekly_update(conn, payload, "submitted")
         _replace_children(conn, weekly_update_id, payload)
