@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
+
 import streamlit as st
 from streamlit.errors import StreamlitAuthError, StreamlitSecretNotFoundError
 
@@ -20,6 +22,10 @@ st.set_page_config(
 )
 
 
+_CALLBACK_ATTEMPTS_KEY = "auth_callback_attempts"
+_CALLBACK_MARKER_KEY = "auth_callback_marker"
+
+
 def _safe_user_logged_in() -> bool:
     try:
         return bool(st.user.is_logged_in)
@@ -36,15 +42,48 @@ def _auth_diagnostics() -> tuple[list[str], bool]:
     return missing, callback_failed
 
 
+def _record_callback_failure(
+    session_state: MutableMapping[str, object],
+    query_params: Mapping[str, object],
+) -> int:
+    callback_code = str(query_params.get("code", ""))
+    callback_error = str(query_params.get("error", ""))
+    callback_state = str(query_params.get("state", ""))
+    has_callback = bool(callback_code or callback_error)
+    if not has_callback:
+        return int(session_state.get(_CALLBACK_ATTEMPTS_KEY, 0))
+
+    marker = "|".join((callback_code, callback_error, callback_state))
+    if session_state.get(_CALLBACK_MARKER_KEY) != marker:
+        session_state[_CALLBACK_MARKER_KEY] = marker
+        session_state[_CALLBACK_ATTEMPTS_KEY] = int(session_state.get(_CALLBACK_ATTEMPTS_KEY, 0)) + 1
+
+    return int(session_state.get(_CALLBACK_ATTEMPTS_KEY, 0))
+
+
+def _reset_auth_session_state() -> None:
+    st.session_state.pop(_CALLBACK_ATTEMPTS_KEY, None)
+    st.session_state.pop(_CALLBACK_MARKER_KEY, None)
+    st.query_params.clear()
+    st.rerun()
+
+
 def render_clean_login_screen() -> None:
     st.title(APP_NAME)
     st.caption("Executive reporting command center")
     missing, callback_failed = _auth_diagnostics()
+    callback_attempts = _record_callback_failure(st.session_state, st.query_params)
     if callback_failed:
         st.warning(
             "Sign-in callback was received but session was not created. "
             "Verify your Auth0 callback URL exactly matches this app URL + /oauth2callback."
         )
+        if callback_attempts >= 2:
+            st.info(
+                "We detected repeated callback failures in this browser session. "
+                "Reset the local sign-in state and retry."
+            )
+            st.button("Reset sign-in state", on_click=_reset_auth_session_state)
     if missing:
         st.info("OIDC config appears incomplete: " + ", ".join(missing))
     st.button("Login with Auth0", on_click=login_with_auth0, type="primary")
