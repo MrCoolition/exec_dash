@@ -44,3 +44,33 @@ def test_auth_diagnostics_detects_callback_params(monkeypatch):
 
     assert missing == []
     assert callback_failed is True
+
+
+def test_record_callback_failure_tracks_unique_markers():
+    session_state = {}
+
+    attempts = streamlit_app._record_callback_failure(
+        session_state,
+        {"code": "abc123", "state": "state-1"},
+    )
+    assert attempts == 1
+
+    attempts = streamlit_app._record_callback_failure(
+        session_state,
+        {"code": "abc123", "state": "state-1"},
+    )
+    assert attempts == 1
+
+    attempts = streamlit_app._record_callback_failure(
+        session_state,
+        {"code": "xyz999", "state": "state-2"},
+    )
+    assert attempts == 2
+
+
+def test_record_callback_failure_ignores_non_callback_requests():
+    session_state = {}
+
+    attempts = streamlit_app._record_callback_failure(session_state, {})
+
+    assert attempts == 0
