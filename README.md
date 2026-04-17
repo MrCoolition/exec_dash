@@ -19,7 +19,7 @@ streamlit run streamlit_app.py
 
 Set only these values in your Auth0 Application settings for Streamlit Cloud:
 
-- **Allowed Callback URLs**: `https://exec-dash.streamlit.app/oauth2callback`
+- **Allowed Callback URLs**: use the exact callback path you configured for this app (for example `https://exec-dash.streamlit.app/oauth2callback` or `https://exec-dash.streamlit.app/`).
 - **Allowed Logout URLs**: `https://exec-dash.streamlit.app`
 - **Allowed Web Origins**: `https://exec-dash.streamlit.app`
 
