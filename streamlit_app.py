@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 
 import streamlit as st
-import streamlit.components.v1 as components
 from streamlit.errors import StreamlitAuthError, StreamlitSecretNotFoundError
 
 from app.core.config import load_auth_config
@@ -25,7 +24,6 @@ st.set_page_config(
 
 _CALLBACK_ATTEMPTS_KEY = "auth_callback_attempts"
 _CALLBACK_MARKER_KEY = "auth_callback_marker"
-_CALLBACK_REDIRECTED_KEY = "auth_callback_redirected"
 
 
 def _safe_user_logged_in() -> bool:
@@ -66,7 +64,6 @@ def _record_callback_failure(
 def _reset_auth_session_state() -> None:
     st.session_state.pop(_CALLBACK_ATTEMPTS_KEY, None)
     st.session_state.pop(_CALLBACK_MARKER_KEY, None)
-    st.session_state.pop(_CALLBACK_REDIRECTED_KEY, None)
     st.query_params.clear()
     st.rerun()
 
@@ -74,28 +71,8 @@ def _reset_auth_session_state() -> None:
 def _attempt_callback_path_recovery() -> None:
     callback_code = str(st.query_params.get("code", ""))
     callback_error = str(st.query_params.get("error", ""))
-    has_callback = bool(callback_code or callback_error)
-    if not has_callback:
-        st.session_state.pop(_CALLBACK_REDIRECTED_KEY, None)
-        return
-
-    if st.session_state.get(_CALLBACK_REDIRECTED_KEY):
-        return
-
-    st.session_state[_CALLBACK_REDIRECTED_KEY] = True
-    components.html(
-        """
-        <script>
-        const path = window.location.pathname || "/";
-        if (path !== "/oauth2callback") {
-            const target = `${window.location.origin}/oauth2callback${window.location.search}`;
-            window.location.replace(target);
-        }
-        </script>
-        """,
-        height=0,
-    )
-    st.info("Finishing sign-in…")
+    if callback_code or callback_error:
+        st.info("Finishing sign-in…")
 
 
 def render_clean_login_screen() -> None:
@@ -107,7 +84,7 @@ def render_clean_login_screen() -> None:
     if callback_failed:
         st.warning(
             "Sign-in callback was received but session was not created. "
-            "Verify your Auth0 callback URL exactly matches this app URL + /oauth2callback."
+            "Verify your Auth0 callback URL exactly matches the app URL configured in your identity provider."
         )
         if callback_attempts >= 2:
             st.info(
@@ -126,7 +103,6 @@ def main() -> None:
         render_clean_login_screen()
         st.stop()
 
-    st.session_state.pop(_CALLBACK_REDIRECTED_KEY, None)
     sync_user_from_oidc()
     streamlit_user = ensure_authenticated_user()
     ctx = load_user_context(streamlit_user)
