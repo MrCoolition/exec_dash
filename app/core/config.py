@@ -71,7 +71,9 @@ def _normalize_redirect_uri(redirect_uri: object) -> str:
 
     path = parsed.path or ""
     if not path or path == "/":
-        return parsed._replace(path="/oauth2callback").geturl()
+        return parsed._replace(path="/oauth2callback/").geturl()
+    if path == "/oauth2callback":
+        return parsed._replace(path="/oauth2callback/").geturl()
     return raw
 
 
