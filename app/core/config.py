@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 import tomllib
+from urllib.parse import urlparse
 from urllib.parse import quote_plus
 
 import streamlit as st
@@ -26,6 +27,52 @@ class AdoConfig:
 class AppConfig:
     database: DatabaseConfig
     ado: AdoConfig
+
+
+def _first_present_value(config: Mapping[str, object], aliases: tuple[str, ...]) -> object | None:
+    for key in aliases:
+        value = config.get(key)
+        if str(value or "").strip():
+            return value
+    return None
+
+
+def _normalize_auth_key_aliases(config: dict) -> dict:
+    normalized = dict(config)
+    alias_map: dict[str, tuple[str, ...]] = {
+        "client_id": ("client_id", "client id", "client-id", "clientId"),
+        "client_secret": ("client_secret", "client secret", "client-secret", "clientSecret"),
+        "server_metadata_url": (
+            "server_metadata_url",
+            "server metadata url",
+            "server-metadata-url",
+            "serverMetadataUrl",
+        ),
+        "redirect_uri": ("redirect_uri", "redirect uri", "redirect-uri", "redirectURL", "callback_url"),
+        "cookie_secret": ("cookie_secret", "cookie secret", "cookie-secret", "cookieSecret"),
+    }
+    for canonical, aliases in alias_map.items():
+        if normalized.get(canonical):
+            continue
+        value = _first_present_value(normalized, aliases)
+        if value is not None:
+            normalized[canonical] = value
+    return normalized
+
+
+def _normalize_redirect_uri(redirect_uri: object) -> str:
+    raw = str(redirect_uri or "").strip()
+    if not raw:
+        return ""
+
+    parsed = urlparse(raw)
+    if not parsed.scheme or not parsed.netloc:
+        return raw
+
+    path = parsed.path or ""
+    if not path or path == "/":
+        return parsed._replace(path="/oauth2callback").geturl()
+    return raw
 
 
 def _parse_auth_from_raw_string(raw: str) -> dict:
@@ -64,6 +111,7 @@ def load_auth_config() -> dict:
         resolved = _parse_auth_from_raw_string(auth)
     else:
         resolved = {}
+    resolved = _normalize_auth_key_aliases(resolved)
 
     # Streamlit's provider-aware OIDC shape nests credentials under
     # [auth.<provider>] (for this app: [auth.auth0]).
@@ -131,6 +179,7 @@ def load_auth_config() -> dict:
             resolved["cookie_secret"] = db["NOOKIE_PASS"]
     if not resolved.get("cookie_secret") and resolved.get("client_secret"):
         resolved["cookie_secret"] = resolved["client_secret"]
+    resolved["redirect_uri"] = _normalize_redirect_uri(resolved.get("redirect_uri"))
 
     return resolved
 
