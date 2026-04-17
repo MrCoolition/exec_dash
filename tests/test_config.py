@@ -58,7 +58,7 @@ def test_load_auth_config_maps_legacy_auth0_block(monkeypatch):
 
     auth = config.load_auth_config()
 
-    assert auth["redirect_uri"] == "https://example.com/oauth2callback"
+    assert auth["redirect_uri"] == "https://example.com/oauth2callback/"
     assert auth["client_id"] == "id"
     assert auth["client_secret"] == "secret"
     assert auth["server_metadata_url"] == "https://tenant.auth0.com/.well-known/openid-configuration"
@@ -165,7 +165,7 @@ def test_load_auth_config_reads_nested_auth_provider_block(monkeypatch):
 
     auth = config.load_auth_config()
 
-    assert auth["redirect_uri"] == "https://example.com/oauth2callback"
+    assert auth["redirect_uri"] == "https://example.com/oauth2callback/"
     assert auth["cookie_secret"] == "cookie-secret"
     assert auth["client_id"] == "nested-id"
     assert auth["client_secret"] == "nested-secret"
@@ -190,4 +190,23 @@ def test_load_auth_config_accepts_redirect_uri_alias_and_normalizes_callback_pat
 
     assert auth["client_id"] == "id"
     assert auth["client_secret"] == "secret"
-    assert auth["redirect_uri"] == "https://exec-dash.streamlit.app/oauth2callback"
+    assert auth["redirect_uri"] == "https://exec-dash.streamlit.app/oauth2callback/"
+
+
+def test_load_auth_config_normalizes_callback_path_trailing_slash(monkeypatch):
+    monkeypatch.setattr(
+        config.st,
+        "secrets",
+        {
+            "auth": {
+                "domain": "tenant.auth0.com",
+                "client_id": "id",
+                "client_secret": "secret",
+                "redirect_uri": "https://exec-dash.streamlit.app/oauth2callback",
+            }
+        },
+    )
+
+    auth = config.load_auth_config()
+
+    assert auth["redirect_uri"] == "https://exec-dash.streamlit.app/oauth2callback/"

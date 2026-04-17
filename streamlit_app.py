@@ -84,7 +84,8 @@ def render_clean_login_screen() -> None:
     if callback_failed:
         st.warning(
             "Sign-in callback was received but session was not created. "
-            "Verify your Auth0 callback URL exactly matches the app URL configured in your identity provider."
+            "Verify your Auth0 callback URL exactly matches the app URL configured in your identity provider, "
+            "including a trailing slash when using /oauth2callback/."
         )
         if callback_attempts >= 2:
             st.info(
