@@ -74,3 +74,37 @@ def test_record_callback_failure_ignores_non_callback_requests():
     attempts = streamlit_app._record_callback_failure(session_state, {})
 
     assert attempts == 0
+
+
+def test_attempt_callback_path_recovery_redirects_once(monkeypatch):
+    monkeypatch.setattr(streamlit_app.st, "query_params", {"code": "abc123", "state": "s1"})
+    monkeypatch.setattr(streamlit_app.st, "session_state", {})
+    rendered = {"html": 0, "info": 0}
+
+    monkeypatch.setattr(
+        streamlit_app.components,
+        "html",
+        lambda *_args, **_kwargs: rendered.__setitem__("html", rendered["html"] + 1),
+    )
+    monkeypatch.setattr(
+        streamlit_app.st,
+        "info",
+        lambda *_args, **_kwargs: rendered.__setitem__("info", rendered["info"] + 1),
+    )
+
+    streamlit_app._attempt_callback_path_recovery()
+    streamlit_app._attempt_callback_path_recovery()
+
+    assert rendered["html"] == 1
+    assert rendered["info"] == 1
+
+
+def test_attempt_callback_path_recovery_clears_flag_without_callback(monkeypatch):
+    monkeypatch.setattr(streamlit_app.st, "query_params", {})
+    monkeypatch.setattr(streamlit_app.st, "session_state", {"auth_callback_redirected": True})
+    monkeypatch.setattr(streamlit_app.components, "html", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(streamlit_app.st, "info", lambda *_args, **_kwargs: None)
+
+    streamlit_app._attempt_callback_path_recovery()
+
+    assert "auth_callback_redirected" not in streamlit_app.st.session_state
