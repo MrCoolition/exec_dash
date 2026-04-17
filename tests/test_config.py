@@ -170,3 +170,24 @@ def test_load_auth_config_reads_nested_auth_provider_block(monkeypatch):
     assert auth["client_id"] == "nested-id"
     assert auth["client_secret"] == "nested-secret"
     assert auth["server_metadata_url"] == "https://tenant.example.com/.well-known/openid-configuration"
+
+
+def test_load_auth_config_accepts_redirect_uri_alias_and_normalizes_callback_path(monkeypatch):
+    monkeypatch.setattr(
+        config.st,
+        "secrets",
+        {
+            "auth": {
+                "domain": "tenant.auth0.com",
+                "client id": "id",
+                "client secret": "secret",
+                "redirect uri": "https://exec-dash.streamlit.app/",
+            }
+        },
+    )
+
+    auth = config.load_auth_config()
+
+    assert auth["client_id"] == "id"
+    assert auth["client_secret"] == "secret"
+    assert auth["redirect_uri"] == "https://exec-dash.streamlit.app/oauth2callback"
