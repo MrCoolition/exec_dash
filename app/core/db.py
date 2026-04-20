@@ -1,48 +1,46 @@
 from __future__ import annotations
 
 import tempfile
-from contextlib import contextmanager
+from urllib.parse import urlparse
 
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from psycopg2.pool import ThreadedConnectionPool
 
 from app.core.cache import cache_resource
 from app.core.config import load_config
 
 
-@cache_resource
-def get_engine() -> Engine:
+def _pool_kwargs_from_config() -> dict[str, object]:
     cfg = load_config().database
-    connect_args = {}
+    parsed = urlparse(cfg.url)
+
+    if parsed.scheme not in {"postgres", "postgresql"}:
+        raise RuntimeError(
+            "Only PostgreSQL URLs are supported. Configure st.secrets.database.url as postgresql://..."
+        )
+
+    kwargs: dict[str, object] = {
+        "host": parsed.hostname,
+        "port": parsed.port or 5432,
+        "user": parsed.username,
+        "password": parsed.password,
+        "dbname": (parsed.path or "/").lstrip("/"),
+        "sslmode": cfg.sslmode,
+    }
+
     if cfg.ca_pem:
         ca_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pem")
         ca_file.write(cfg.ca_pem.encode("utf-8"))
         ca_file.flush()
-        connect_args = {
-            "sslmode": cfg.sslmode,
-            "sslrootcert": ca_file.name,
-        }
-    return create_engine(cfg.url, pool_pre_ping=True, connect_args=connect_args)
+        kwargs["sslrootcert"] = ca_file.name
 
-
-def init_engine() -> Engine:
-    return get_engine()
+    return kwargs
 
 
 @cache_resource
-def _session_factory() -> sessionmaker[Session]:
-    return sessionmaker(bind=get_engine(), expire_on_commit=False)
+def get_connection_pool() -> ThreadedConnectionPool:
+    kwargs = _pool_kwargs_from_config()
+    return ThreadedConnectionPool(minconn=1, maxconn=10, **kwargs)
 
 
-@contextmanager
-def db_session() -> Session:
-    session = _session_factory()()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+def init_engine() -> ThreadedConnectionPool:
+    return get_connection_pool()
