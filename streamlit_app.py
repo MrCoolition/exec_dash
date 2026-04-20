@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 warnings.filterwarnings(
     "ignore",
-    message=r"authlib\.jose module is deprecated, please use joserfc instead\.",
+    message=r"authlib\.jose module is deprecated, please use joserfc instead\..*",
     category=DeprecationWarning,
 )
 
