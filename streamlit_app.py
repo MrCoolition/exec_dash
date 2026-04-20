@@ -42,6 +42,8 @@ _CALLBACK_MARKER_KEY = "auth_callback_marker"
 
 
 def safe_is_logged_in() -> bool:
+    if st.session_state.get("force_logged_out", False):
+        return False
     try:
         return bool(st.user.is_logged_in)
     except (StreamlitAuthError, StreamlitSecretNotFoundError, Exception):
@@ -106,8 +108,9 @@ def _render_auth_config_error(validation: AuthValidationResult) -> None:
 
 def _logout() -> None:
     clear_auth_session_state()
+    st.session_state["force_logged_out"] = True
     st.query_params.clear()
-    st.logout()
+    st.rerun()
 
 
 def render_clean_login_screen(validation: AuthValidationResult) -> None:

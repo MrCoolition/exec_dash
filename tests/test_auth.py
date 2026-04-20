@@ -66,6 +66,7 @@ def test_clear_auth_session_state_resets_expected_keys(monkeypatch):
     assert auth.st.session_state["user_id"] is None
     assert auth.st.session_state["username"] == ""
     assert auth.st.session_state["user_roles"] == ["user"]
+    assert auth.st.session_state["force_logged_out"] is False
     assert "auth_callback_attempts" not in auth.st.session_state
     assert "auth_callback_marker" not in auth.st.session_state
 

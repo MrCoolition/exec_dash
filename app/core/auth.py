@@ -21,6 +21,7 @@ _AUTH_SESSION_DEFAULTS: dict[str, object] = {
     "user_email": "",
     "user_description": "",
     "user_roles": ["user"],
+    "force_logged_out": False,
 }
 
 
@@ -100,6 +101,7 @@ def sync_user_from_oidc() -> None:
     st.session_state["user_email"] = email
     st.session_state["user_description"] = ""
     st.session_state["user_roles"] = roles
+    st.session_state["force_logged_out"] = False
 
 
 def load_user_from_session() -> object:
