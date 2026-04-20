@@ -55,7 +55,7 @@ def test_validate_canonical_auth_config_rejects_non_root_callback_path():
     assert any("multipage route" in err for err in result.errors)
 
 
-def test_validate_canonical_auth_config_rejects_placeholder_and_short_secret_values():
+def test_validate_canonical_auth_config_warns_on_cookie_placeholder_and_rejects_provider_placeholders():
     result = config.validate_canonical_auth_config(
         {
             "auth": {
@@ -71,5 +71,6 @@ def test_validate_canonical_auth_config_rejects_placeholder_and_short_secret_val
     )
 
     assert result.is_valid is False
-    assert any("placeholder" in err for err in result.errors)
+    assert any("auth.auth0.client_id appears to be a placeholder" in err for err in result.errors)
     assert any("too short" in err for err in result.errors)
+    assert any("auth.cookie_secret appears to be a placeholder" in warning for warning in result.warnings)
