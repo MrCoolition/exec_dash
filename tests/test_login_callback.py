@@ -70,3 +70,14 @@ def test_logout_clears_app_state(monkeypatch):
     assert called["clear"] is True
     assert called["logout"] is True
     assert called["qp"] is True
+
+
+def test_safe_is_logged_in_handles_unexpected_errors(monkeypatch):
+    class BrokenUser:
+        @property
+        def is_logged_in(self):
+            raise RuntimeError("unexpected callback handling error")
+
+    monkeypatch.setattr(streamlit_app.st, "user", BrokenUser())
+
+    assert streamlit_app.safe_is_logged_in() is False

@@ -24,6 +24,14 @@ _AUTH_SESSION_DEFAULTS: dict[str, object] = {
 }
 
 
+def _safe_user_is_logged_in() -> bool:
+    try:
+        return bool(st.user.is_logged_in)
+    except Exception:
+        _LOG.exception("Unable to read Streamlit user login state")
+        return False
+
+
 def _as_roles(raw: object) -> list[str]:
     if raw is None:
         return []
@@ -71,11 +79,16 @@ def clear_auth_session_state() -> None:
 
 
 def sync_user_from_oidc() -> None:
-    if not st.user.is_logged_in:
+    if not _safe_user_is_logged_in():
         clear_auth_session_state()
         return
 
-    identity = st.user.to_dict()
+    try:
+        identity = st.user.to_dict()
+    except Exception:
+        _LOG.exception("Unable to read Streamlit user identity payload")
+        clear_auth_session_state()
+        return
     email = identity.get("email", "")
     name = identity.get("name") or identity.get("given_name") or email or "user"
     oidc_sub = identity.get("sub", email)

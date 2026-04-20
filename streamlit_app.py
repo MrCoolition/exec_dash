@@ -44,7 +44,7 @@ _CALLBACK_MARKER_KEY = "auth_callback_marker"
 def safe_is_logged_in() -> bool:
     try:
         return bool(st.user.is_logged_in)
-    except (StreamlitAuthError, StreamlitSecretNotFoundError):
+    except (StreamlitAuthError, StreamlitSecretNotFoundError, Exception):
         return False
 
 
