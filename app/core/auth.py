@@ -14,14 +14,23 @@ APP_NAME = "Impower AI"
 _LOG = logging.getLogger(__name__)
 
 
+_AUTH_SESSION_DEFAULTS: dict[str, object] = {
+    "authenticated": False,
+    "user_id": None,
+    "username": "",
+    "user_email": "",
+    "user_description": "",
+    "user_roles": ["user"],
+}
+
+
 def _as_roles(raw: object) -> list[str]:
     if raw is None:
         return []
     if isinstance(raw, str):
         return [r.strip() for r in raw.split(",") if r.strip()]
     if isinstance(raw, Iterable):
-        roles = [str(r).strip() for r in raw if str(r).strip()]
-        return roles
+        return [str(r).strip() for r in raw if str(r).strip()]
     return []
 
 
@@ -53,18 +62,20 @@ def login_with_auth0() -> None:
         st.error("We couldn't complete sign in. Please try again or contact support.")
 
 
+def clear_auth_session_state() -> None:
+    for key, value in _AUTH_SESSION_DEFAULTS.items():
+        st.session_state[key] = value
+
+    st.session_state.pop("auth_callback_attempts", None)
+    st.session_state.pop("auth_callback_marker", None)
+
+
 def sync_user_from_oidc() -> None:
     if not st.user.is_logged_in:
-        st.session_state["authenticated"] = False
-        st.session_state["user_id"] = None
-        st.session_state["username"] = ""
-        st.session_state["user_email"] = ""
-        st.session_state["user_description"] = ""
-        st.session_state["user_roles"] = ["user"]
+        clear_auth_session_state()
         return
 
     identity = st.user.to_dict()
-
     email = identity.get("email", "")
     name = identity.get("name") or identity.get("given_name") or email or "user"
     oidc_sub = identity.get("sub", email)
@@ -78,13 +89,7 @@ def sync_user_from_oidc() -> None:
     st.session_state["user_roles"] = roles
 
 
-def ensure_authenticated_user() -> object:
-    sync_user_from_oidc()
-    if not st.session_state.get("authenticated", False):
-        st.title(APP_NAME)
-        st.button("Login with Auth0", on_click=login_with_auth0, type="primary")
-        st.stop()
-
+def load_user_from_session() -> object:
     return type(
         "OidcUser",
         (),

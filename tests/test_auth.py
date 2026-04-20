@@ -43,3 +43,28 @@ def test_sync_user_from_oidc_extracts_namespaced_roles(monkeypatch):
     auth.sync_user_from_oidc()
 
     assert auth.st.session_state["user_roles"] == ["admin", "editor"]
+
+
+def test_clear_auth_session_state_resets_expected_keys(monkeypatch):
+    monkeypatch.setattr(
+        auth.st,
+        "session_state",
+        {
+            "authenticated": True,
+            "user_id": "abc",
+            "username": "Name",
+            "user_email": "test@example.com",
+            "user_roles": ["admin"],
+            "auth_callback_attempts": 3,
+            "auth_callback_marker": "marker",
+        },
+    )
+
+    auth.clear_auth_session_state()
+
+    assert auth.st.session_state["authenticated"] is False
+    assert auth.st.session_state["user_id"] is None
+    assert auth.st.session_state["username"] == ""
+    assert auth.st.session_state["user_roles"] == ["user"]
+    assert "auth_callback_attempts" not in auth.st.session_state
+    assert "auth_callback_marker" not in auth.st.session_state

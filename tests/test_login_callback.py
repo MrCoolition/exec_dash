@@ -3,10 +3,24 @@ import pytest
 import streamlit_app
 
 
+class _Nav:
+    def __init__(self, called: dict[str, bool]):
+        self._called = called
+
+    def run(self) -> None:
+        self._called["run"] = True
+
+
 def test_main_unauthenticated_renders_clean_login(monkeypatch):
-    monkeypatch.setattr(streamlit_app, "_safe_user_logged_in", lambda: False)
+    monkeypatch.setattr(
+        streamlit_app,
+        "validate_canonical_auth_config",
+        lambda: type("V", (), {"is_valid": True, "errors": (), "warnings": (), "canonical": {"redirect_uri": ""}})(),
+    )
+    monkeypatch.setattr(streamlit_app, "safe_is_logged_in", lambda: False)
     called = {"login": False}
-    monkeypatch.setattr(streamlit_app, "render_clean_login_screen", lambda: called.__setitem__("login", True))
+    monkeypatch.setattr(streamlit_app, "render_clean_login_screen", lambda _v: called.__setitem__("login", True))
+    monkeypatch.setattr(streamlit_app, "sync_user_from_oidc", lambda: None)
     monkeypatch.setattr(streamlit_app.st, "stop", lambda: (_ for _ in ()).throw(RuntimeError("stopped")))
 
     with pytest.raises(RuntimeError, match="stopped"):
@@ -15,90 +29,44 @@ def test_main_unauthenticated_renders_clean_login(monkeypatch):
     assert called["login"] is True
 
 
-def test_auth_diagnostics_detects_missing_fields(monkeypatch):
-    monkeypatch.setattr(streamlit_app, "load_auth_config", lambda: {"client_id": "id"})
-    monkeypatch.setattr(streamlit_app.st, "query_params", {})
+def test_main_authenticated_runs_navigation(monkeypatch):
+    validation = type("V", (), {"is_valid": True, "errors": (), "warnings": (), "canonical": {"redirect_uri": ""}})()
+    nav_called = {"run": False}
 
-    missing, callback_failed = streamlit_app._auth_diagnostics()
+    monkeypatch.setattr(streamlit_app, "validate_canonical_auth_config", lambda: validation)
+    monkeypatch.setattr(streamlit_app, "safe_is_logged_in", lambda: True)
+    monkeypatch.setattr(streamlit_app, "sync_user_from_oidc", lambda: None)
+    monkeypatch.setattr(streamlit_app, "load_user_from_session", lambda: object())
+    monkeypatch.setattr(streamlit_app, "load_user_context", lambda _u: type("Ctx", (), {"user": type("U", (), {"display_name": "User", "email": ""})()})())
+    monkeypatch.setattr(streamlit_app, "render_shell", lambda _ctx: None)
+    monkeypatch.setattr(streamlit_app, "build_pages", lambda _ctx: ["overview"])
+    monkeypatch.setattr(streamlit_app.st, "navigation", lambda *_args, **_kwargs: _Nav(nav_called))
 
-    assert callback_failed is False
-    assert "client_secret" in missing
-    assert "redirect_uri" in missing
+    class _SidebarCtx:
+        def __enter__(self):
+            return None
 
+        def __exit__(self, *_args):
+            return False
 
-def test_auth_diagnostics_detects_callback_params(monkeypatch):
-    monkeypatch.setattr(
-        streamlit_app,
-        "load_auth_config",
-        lambda: {
-            "client_id": "id",
-            "client_secret": "secret",
-            "server_metadata_url": "https://tenant.example.com/.well-known/openid-configuration",
-            "redirect_uri": "https://example.com/oauth2callback",
-            "cookie_secret": "cookie",
-        },
-    )
-    monkeypatch.setattr(streamlit_app.st, "query_params", {"code": "abc123"})
+    monkeypatch.setattr(streamlit_app.st, "sidebar", _SidebarCtx())
+    monkeypatch.setattr(streamlit_app.st, "caption", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(streamlit_app.st, "button", lambda *_args, **_kwargs: False)
 
-    missing, callback_failed = streamlit_app._auth_diagnostics()
+    streamlit_app.main()
 
-    assert missing == []
-    assert callback_failed is True
+    assert nav_called["run"] is True
 
 
-def test_record_callback_failure_tracks_unique_markers():
-    session_state = {}
+def test_logout_clears_app_state(monkeypatch):
+    called = {"clear": False, "logout": False, "qp": False}
 
-    attempts = streamlit_app._record_callback_failure(
-        session_state,
-        {"code": "abc123", "state": "state-1"},
-    )
-    assert attempts == 1
+    monkeypatch.setattr(streamlit_app, "clear_auth_session_state", lambda: called.__setitem__("clear", True))
+    monkeypatch.setattr(streamlit_app.st, "logout", lambda: called.__setitem__("logout", True))
+    monkeypatch.setattr(streamlit_app.st, "query_params", type("QP", (), {"clear": lambda self: called.__setitem__("qp", True)})())
 
-    attempts = streamlit_app._record_callback_failure(
-        session_state,
-        {"code": "abc123", "state": "state-1"},
-    )
-    assert attempts == 1
+    streamlit_app._logout()
 
-    attempts = streamlit_app._record_callback_failure(
-        session_state,
-        {"code": "xyz999", "state": "state-2"},
-    )
-    assert attempts == 2
-
-
-def test_record_callback_failure_ignores_non_callback_requests():
-    session_state = {}
-
-    attempts = streamlit_app._record_callback_failure(session_state, {})
-
-    assert attempts == 0
-
-
-def test_attempt_callback_path_recovery_shows_progress_for_callback(monkeypatch):
-    monkeypatch.setattr(streamlit_app.st, "query_params", {"code": "abc123", "state": "s1"})
-    rendered = {"info": 0}
-    monkeypatch.setattr(
-        streamlit_app.st,
-        "info",
-        lambda *_args, **_kwargs: rendered.__setitem__("info", rendered["info"] + 1),
-    )
-
-    streamlit_app._attempt_callback_path_recovery()
-
-    assert rendered["info"] == 1
-
-
-def test_attempt_callback_path_recovery_noop_without_callback(monkeypatch):
-    monkeypatch.setattr(streamlit_app.st, "query_params", {})
-    rendered = {"info": 0}
-    monkeypatch.setattr(
-        streamlit_app.st,
-        "info",
-        lambda *_args, **_kwargs: rendered.__setitem__("info", rendered["info"] + 1),
-    )
-
-    streamlit_app._attempt_callback_path_recovery()
-
-    assert rendered["info"] == 0
+    assert called["clear"] is True
+    assert called["logout"] is True
+    assert called["qp"] is True
