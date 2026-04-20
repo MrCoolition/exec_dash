@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-import tomllib
-from urllib.parse import urlparse
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 import streamlit as st
 
@@ -29,162 +27,94 @@ class AppConfig:
     ado: AdoConfig
 
 
-def _first_present_value(config: Mapping[str, object], aliases: tuple[str, ...]) -> object | None:
-    for key in aliases:
-        value = config.get(key)
-        if str(value or "").strip():
-            return value
-    return None
+@dataclass(frozen=True)
+class AuthValidationResult:
+    is_valid: bool
+    errors: tuple[str, ...]
+    warnings: tuple[str, ...]
+    canonical: dict[str, str]
 
 
-def _normalize_auth_key_aliases(config: dict) -> dict:
-    normalized = dict(config)
-    alias_map: dict[str, tuple[str, ...]] = {
-        "client_id": ("client_id", "client id", "client-id", "clientId"),
-        "client_secret": ("client_secret", "client secret", "client-secret", "clientSecret"),
-        "server_metadata_url": (
-            "server_metadata_url",
-            "server metadata url",
-            "server-metadata-url",
-            "serverMetadataUrl",
-        ),
-        "redirect_uri": ("redirect_uri", "redirect uri", "redirect-uri", "redirectURL", "callback_url"),
-        "cookie_secret": ("cookie_secret", "cookie secret", "cookie-secret", "cookieSecret"),
+def _coerce_mapping(value: object) -> Mapping[str, object]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _as_clean_str(value: object) -> str:
+    return str(value or "").strip()
+
+
+def load_canonical_auth_secrets(raw_secrets: Mapping[str, object] | None = None) -> dict[str, str]:
+    secrets = raw_secrets if raw_secrets is not None else st.secrets
+    auth = _coerce_mapping(secrets.get("auth"))
+    provider = _coerce_mapping(auth.get("auth0"))
+
+    return {
+        "redirect_uri": _as_clean_str(auth.get("redirect_uri")),
+        "cookie_secret": _as_clean_str(auth.get("cookie_secret")),
+        "client_id": _as_clean_str(provider.get("client_id")),
+        "client_secret": _as_clean_str(provider.get("client_secret")),
+        "server_metadata_url": _as_clean_str(provider.get("server_metadata_url")),
     }
-    for canonical, aliases in alias_map.items():
-        if normalized.get(canonical):
-            continue
-        value = _first_present_value(normalized, aliases)
-        if value is not None:
-            normalized[canonical] = value
-    return normalized
 
 
-def _normalize_redirect_uri(redirect_uri: object) -> str:
-    raw = str(redirect_uri or "").strip()
-    if not raw:
-        return ""
+def validate_canonical_auth_config(raw_secrets: Mapping[str, object] | None = None) -> AuthValidationResult:
+    secrets = raw_secrets if raw_secrets is not None else st.secrets
+    canonical = load_canonical_auth_secrets(secrets)
+    errors: list[str] = []
+    warnings: list[str] = []
 
-    parsed = urlparse(raw)
-    if not parsed.scheme or not parsed.netloc:
-        return raw
+    for key, value in canonical.items():
+        if not value:
+            errors.append(f"Missing required secret: auth{'.auth0' if key in {'client_id', 'client_secret', 'server_metadata_url'} else ''}.{key}")
 
-    path = parsed.path or ""
-    if not path or path == "/":
-        return parsed._replace(path="/oauth2callback/").geturl()
-    if path == "/oauth2callback":
-        return parsed._replace(path="/oauth2callback/").geturl()
-    return raw
+    redirect_uri = canonical["redirect_uri"]
+    if redirect_uri:
+        parsed = urlparse(redirect_uri)
+        if not parsed.scheme or not parsed.netloc:
+            errors.append("auth.redirect_uri must be an absolute URL.")
+        if not parsed.path.endswith("/oauth2callback"):
+            errors.append("auth.redirect_uri must end with /oauth2callback.")
+        disallowed_fragments = ("/~+/", "/~/", "/pages/", "/+/", "~+")
+        if any(fragment in parsed.path for fragment in disallowed_fragments):
+            errors.append("auth.redirect_uri must target the app root callback path, not a multipage route.")
 
-
-def _parse_auth_from_raw_string(raw: str) -> dict:
-    content = raw.strip()
-    if not content:
-        return {}
-
-    # Some deploy environments inject TOML as a single-line string with escaped
-    # newlines (e.g. "[auth]\\nclient_id = ..."). Decode that shape first.
-    if "\\n" in content:
-        content = content.replace("\\n", "\n")
-
-    parse_candidates = [content]
-    if "[auth]" not in content:
-        parse_candidates.append(f"[auth]\n{content}")
-
-    for candidate in parse_candidates:
-        try:
-            parsed = tomllib.loads(candidate)
-        except tomllib.TOMLDecodeError:
-            continue
-
-        auth = parsed.get("auth")
-        if isinstance(auth, dict):
-            return auth
-
-    return {}
-
-
-def load_auth_config() -> dict:
-    auth = st.secrets.get("auth", {})
-    resolved: dict
-    if isinstance(auth, Mapping):
-        resolved = dict(auth)
-    elif isinstance(auth, str):
-        resolved = _parse_auth_from_raw_string(auth)
-    else:
-        resolved = {}
-    resolved = _normalize_auth_key_aliases(resolved)
-
-    # Streamlit's provider-aware OIDC shape nests credentials under
-    # [auth.<provider>] (for this app: [auth.auth0]).
-    provider_block = resolved.get("auth0", {})
-    if isinstance(provider_block, Mapping):
-        if not resolved.get("client_id") and provider_block.get("client_id"):
-            resolved["client_id"] = provider_block["client_id"]
-        if not resolved.get("client_secret") and provider_block.get("client_secret"):
-            resolved["client_secret"] = provider_block["client_secret"]
-        if not resolved.get("server_metadata_url") and provider_block.get("server_metadata_url"):
-            resolved["server_metadata_url"] = provider_block["server_metadata_url"]
-        if not resolved.get("domain") and provider_block.get("domain"):
-            resolved["domain"] = provider_block["domain"]
-
-    # Legacy Auth0 block compatibility:
-    # map [auth0] into the Streamlit [auth] schema when [auth] is missing or
-    # partially configured.
-    legacy_auth0 = st.secrets.get("auth0", {})
-    if isinstance(legacy_auth0, Mapping) and legacy_auth0:
-        if not resolved.get("redirect_uri"):
-            legacy_redirect = (
-                legacy_auth0.get("redirect_uri")
-                or legacy_auth0.get("callback_url")
-                or legacy_auth0.get("redirectURL")
+    metadata_url = canonical["server_metadata_url"]
+    if metadata_url:
+        parsed_metadata = urlparse(metadata_url)
+        if not parsed_metadata.scheme or not parsed_metadata.netloc:
+            errors.append("auth.auth0.server_metadata_url must be an absolute URL.")
+        if not metadata_url.endswith("/.well-known/openid-configuration"):
+            errors.append(
+                "auth.auth0.server_metadata_url must be a full well-known URL ending with /.well-known/openid-configuration."
             )
-            if legacy_redirect:
-                resolved["redirect_uri"] = legacy_redirect
 
-        if not resolved.get("client_id") and legacy_auth0.get("client_id"):
-            resolved["client_id"] = legacy_auth0["client_id"]
-        if not resolved.get("client_secret") and legacy_auth0.get("client_secret"):
-            resolved["client_secret"] = legacy_auth0["client_secret"]
+    legacy_auth0 = _coerce_mapping(secrets.get("auth0"))
+    if legacy_auth0 and not _coerce_mapping(secrets.get("auth")):
+        warnings.append("Legacy [auth0] block detected; runtime auth requires canonical [auth] and [auth.auth0] secrets.")
 
-        if not resolved.get("server_metadata_url") and legacy_auth0.get("domain"):
-            resolved["domain"] = legacy_auth0["domain"]
-
-    # Backward-compatible shorthand for OIDC metadata discovery URL.
-    # Accept common keys used across Auth0/Okta/OIDC samples.
-    metadata_source = (
-        resolved.get("server_metadata_url")
-        or resolved.get("issuer")
-        or resolved.get("issuer_url")
-        or resolved.get("authority")
-        or resolved.get("authority_url")
-        or resolved.get("domain")
+    return AuthValidationResult(
+        is_valid=not errors,
+        errors=tuple(errors),
+        warnings=tuple(warnings),
+        canonical=canonical,
     )
-    if metadata_source and not resolved.get("server_metadata_url"):
-        normalized_source = str(metadata_source).strip().rstrip("/")
-        if normalized_source:
-            if normalized_source.startswith(("http://", "https://")):
-                base = normalized_source
-            else:
-                base = f"https://{normalized_source}"
-            if base.endswith("/.well-known/openid-configuration"):
-                resolved["server_metadata_url"] = base
-            else:
-                resolved["server_metadata_url"] = f"{base}/.well-known/openid-configuration"
 
-    # Streamlit OIDC needs cookie_secret; use an explicit value when possible,
-    # then database.NOOKIE_PASS, and finally client_secret to keep legacy
-    # deployments operable.
-    if not resolved.get("cookie_secret"):
-        db = st.secrets.get("database", {})
-        if isinstance(db, Mapping) and db.get("NOOKIE_PASS"):
-            resolved["cookie_secret"] = db["NOOKIE_PASS"]
-    if not resolved.get("cookie_secret") and resolved.get("client_secret"):
-        resolved["cookie_secret"] = resolved["client_secret"]
-    resolved["redirect_uri"] = _normalize_redirect_uri(resolved.get("redirect_uri"))
 
-    return resolved
+def load_auth_compat_diagnostics(raw_secrets: Mapping[str, object] | None = None) -> dict[str, object]:
+    """Optional human-facing diagnostics for legacy auth secret shapes."""
+    secrets = raw_secrets if raw_secrets is not None else st.secrets
+    legacy_auth0 = _coerce_mapping(secrets.get("auth0"))
+    auth = _coerce_mapping(secrets.get("auth"))
 
+    alias_fields = tuple(
+        key
+        for key in ("domain", "redirectURL", "callback_url", "redirect uri")
+        if key in auth or key in legacy_auth0
+    )
+    return {
+        "has_legacy_auth0_block": bool(legacy_auth0),
+        "uses_legacy_alias_fields": alias_fields,
+    }
 
 
 def load_config() -> AppConfig:
