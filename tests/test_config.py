@@ -74,3 +74,45 @@ def test_validate_canonical_auth_config_warns_on_cookie_placeholder_and_rejects_
     assert any("auth.auth0.client_id appears to be a placeholder" in err for err in result.errors)
     assert any("too short" in err for err in result.errors)
     assert any("auth.cookie_secret appears to be a placeholder" in warning for warning in result.warnings)
+
+
+def test_load_config_prefers_aiven_components_over_database_url(monkeypatch):
+    class _StubStreamlit:
+        secrets = {
+            "database": {
+                "url": "postgresql://stale:stale@old-host:5432/old-db",
+                "AIVEN_HOST": "fresh-host",
+                "AIVEN_USER": "fresh-user",
+                "AIVEN_PASSWORD": "fresh-password",
+                "AIVEN_DB": "fresh-db",
+                "AIVEN_PORT": "25060",
+            },
+            "azure_devops": {},
+        }
+
+    monkeypatch.setattr(config, "st", _StubStreamlit)
+    loaded = config.load_config()
+    assert loaded.database.url == "postgresql://fresh-user:fresh-password@fresh-host:25060/fresh-db"
+
+
+def test_load_config_accepts_aiven_namespace(monkeypatch):
+    class _StubStreamlit:
+        secrets = {
+            "database": {
+                "url": "postgresql://stale:stale@old-host:5432/old-db",
+            },
+            "aiven": {
+                "host": "cluster-host",
+                "user": "cluster-user",
+                "password": "secret!pass",
+                "db": "cluster-db",
+                "port": "15956",
+                "ca_pem": "-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----",
+            },
+            "azure_devops": {},
+        }
+
+    monkeypatch.setattr(config, "st", _StubStreamlit)
+    loaded = config.load_config()
+    assert loaded.database.url == "postgresql://cluster-user:secret%21pass@cluster-host:15956/cluster-db"
+    assert loaded.database.ca_pem == "-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----"
