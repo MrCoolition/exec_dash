@@ -4,7 +4,7 @@ Production-oriented scaffold for a Streamlit executive delivery platform with:
 
 - Streamlit native OIDC/Auth0 authentication using `st.login()`, `st.user`, and `st.logout()`.
 - Role and tenant-aware page composition.
-- SQLAlchemy-backed data layer for Aiven PostgreSQL.
+- psycopg2-backed data layer for PostgreSQL with connection pooling.
 - Azure DevOps PAT integration wrapper with migration-ready credential abstraction.
 - `st.navigation(...)`-based page architecture.
 
@@ -50,5 +50,5 @@ server_metadata_url = "https://<AUTH0_TENANT_DOMAIN>/.well-known/openid-configur
 ## Notes
 
 - Copy `.streamlit/secrets.example.toml` to `.streamlit/secrets.toml` for local development.
-- Database config supports either `database.url` (`postgresql+psycopg://...`) or Aiven-style `database.AIVEN_*` fields that are assembled into a psycopg URL automatically.
+- Database config supports either `database.url` (`postgresql://...`) or Aiven-style `database.AIVEN_*` fields that are assembled into a psycopg URL automatically.
 - Do **not** commit real secrets.

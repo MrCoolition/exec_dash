@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from sqlalchemy import select
-
-from app.core.db import db_session
-from app.models.sqlalchemy_models import User
+from app.db import fetch_one
 
 
-def upsert_user(provider: str, provider_sub: str, email: str | None, display_name: str | None) -> User:
-    with db_session() as session:
-        user = session.scalar(select(User).where(User.provider_sub == provider_sub))
-        if user is None:
-            user = User(provider=provider, provider_sub=provider_sub, email=email, display_name=display_name)
-            session.add(user)
-            session.flush()
-        else:
-            user.email = email
-            user.display_name = display_name
-        return user
+def upsert_user(provider: str, provider_sub: str, email: str | None, display_name: str | None) -> dict:
+    return fetch_one(
+        """
+        INSERT INTO users (provider, provider_sub, email, display_name)
+        VALUES (:provider, :provider_sub, :email, :display_name)
+        ON CONFLICT (provider_sub) DO UPDATE SET
+            email = EXCLUDED.email,
+            display_name = EXCLUDED.display_name
+        RETURNING id::text AS id, provider, provider_sub, email, display_name
+        """,
+        {
+            "provider": provider,
+            "provider_sub": provider_sub,
+            "email": email,
+            "display_name": display_name,
+        },
+    ) or {}

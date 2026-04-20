@@ -151,7 +151,7 @@ def load_config() -> AppConfig:
         host = db.get("AIVEN_HOST", "")
         port = db.get("AIVEN_PORT", "5432")
         name = db.get("AIVEN_DB", "")
-        database_url = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{name}"
+        database_url = f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
     sslmode = db.get("sslmode", "verify-ca")
     if db.get("AIVEN_HOST") and not db.get("sslmode"):
@@ -159,7 +159,7 @@ def load_config() -> AppConfig:
 
     return AppConfig(
         database=DatabaseConfig(
-            url=database_url or "sqlite+pysqlite:///./local.db",
+            url=database_url or "postgresql://postgres:postgres@localhost:5432/postgres",
             sslmode=sslmode,
             ca_pem=db.get("AIVEN_CA_PEM") or aiven.get("ca_pem"),
         ),

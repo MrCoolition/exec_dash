@@ -4,9 +4,7 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import text
-
-from app.db import connection, fetch_all, fetch_one
+from app.db import _to_psycopg2_query, connection, fetch_all, fetch_one
 from app.ui.exec_formatters import has_text
 
 
@@ -146,108 +144,122 @@ def _as_uuid_or_none(raw_value: str | None) -> str | None:
 
 def _upsert_weekly_update(conn, payload: dict[str, Any], update_status: str) -> str:
     user_id = _as_uuid_or_none(payload.get("submitted_by"))
-    result = conn.execute(
-        text(
-            """
-            INSERT INTO app.weekly_update (
-                program_id, week_ending, update_state, overall_status, current_phase,
-                percent_complete, trend, accomplishments, dependencies, next_steps,
-                executive_summary, submitted_at, submitted_by_user_id, updated_by_user_id, updated_at
-            ) VALUES (
-                :program_id, :week_ending, :update_status, :overall_status, :current_phase,
-                :percent_complete, :trend, :accomplishments, :dependencies, :next_steps,
-                :executive_summary, :submitted_at, :submitted_by, :updated_by, :updated_at
-            )
-            ON CONFLICT (program_id, week_ending) DO UPDATE SET
-                update_state = EXCLUDED.update_state,
-                overall_status = EXCLUDED.overall_status,
-                current_phase = EXCLUDED.current_phase,
-                percent_complete = EXCLUDED.percent_complete,
-                trend = EXCLUDED.trend,
-                accomplishments = EXCLUDED.accomplishments,
-                dependencies = EXCLUDED.dependencies,
-                next_steps = EXCLUDED.next_steps,
-                executive_summary = EXCLUDED.executive_summary,
-                submitted_at = EXCLUDED.submitted_at,
-                submitted_by_user_id = EXCLUDED.submitted_by_user_id,
-                updated_by_user_id = EXCLUDED.updated_by_user_id,
-                updated_at = EXCLUDED.updated_at
-            RETURNING weekly_update_id
-            """
-        ),
-        {
-            "program_id": payload["program_id"],
-            "week_ending": payload["week_ending"],
-            "update_status": update_status,
-            "overall_status": payload["overall_status"],
-            "current_phase": payload["current_phase"],
-            "percent_complete": payload["percent_complete"],
-            "trend": payload["trend"],
-            "accomplishments": payload.get("accomplishments"),
-            "dependencies": payload.get("dependencies"),
-            "next_steps": payload.get("next_steps"),
-            "executive_summary": payload.get("executive_summary"),
-            "submitted_at": datetime.utcnow() if update_status == "submitted" else None,
-            "submitted_by": user_id if update_status == "submitted" else None,
-            "updated_by": user_id,
-            "updated_at": datetime.utcnow(),
-        },
-    )
-    return str(result.scalar_one())
+    with conn.cursor() as cursor:
+        cursor.execute(
+            _to_psycopg2_query(
+                """
+                INSERT INTO app.weekly_update (
+                    program_id, week_ending, update_state, overall_status, current_phase,
+                    percent_complete, trend, accomplishments, dependencies, next_steps,
+                    executive_summary, submitted_at, submitted_by_user_id, updated_by_user_id, updated_at
+                ) VALUES (
+                    :program_id, :week_ending, :update_status, :overall_status, :current_phase,
+                    :percent_complete, :trend, :accomplishments, :dependencies, :next_steps,
+                    :executive_summary, :submitted_at, :submitted_by, :updated_by, :updated_at
+                )
+                ON CONFLICT (program_id, week_ending) DO UPDATE SET
+                    update_state = EXCLUDED.update_state,
+                    overall_status = EXCLUDED.overall_status,
+                    current_phase = EXCLUDED.current_phase,
+                    percent_complete = EXCLUDED.percent_complete,
+                    trend = EXCLUDED.trend,
+                    accomplishments = EXCLUDED.accomplishments,
+                    dependencies = EXCLUDED.dependencies,
+                    next_steps = EXCLUDED.next_steps,
+                    executive_summary = EXCLUDED.executive_summary,
+                    submitted_at = EXCLUDED.submitted_at,
+                    submitted_by_user_id = EXCLUDED.submitted_by_user_id,
+                    updated_by_user_id = EXCLUDED.updated_by_user_id,
+                    updated_at = EXCLUDED.updated_at
+                RETURNING weekly_update_id
+                """
+            ),
+            {
+                "program_id": payload["program_id"],
+                "week_ending": payload["week_ending"],
+                "update_status": update_status,
+                "overall_status": payload["overall_status"],
+                "current_phase": payload["current_phase"],
+                "percent_complete": payload["percent_complete"],
+                "trend": payload["trend"],
+                "accomplishments": payload.get("accomplishments"),
+                "dependencies": payload.get("dependencies"),
+                "next_steps": payload.get("next_steps"),
+                "executive_summary": payload.get("executive_summary"),
+                "submitted_at": datetime.utcnow() if update_status == "submitted" else None,
+                "submitted_by": user_id if update_status == "submitted" else None,
+                "updated_by": user_id,
+                "updated_at": datetime.utcnow(),
+            },
+        )
+        row = cursor.fetchone()
+    if row is None:
+        raise RuntimeError("Failed to upsert weekly update")
+    return str(row[0])
 
 
 def _replace_children(conn, weekly_update_id: str, payload: dict[str, Any]) -> None:
-    conn.execute(text("DELETE FROM app.weekly_update_milestone WHERE weekly_update_id = :id"), {"id": weekly_update_id})
-    conn.execute(text("DELETE FROM app.weekly_update_risk WHERE weekly_update_id = :id"), {"id": weekly_update_id})
-    conn.execute(text("DELETE FROM app.weekly_update_decision WHERE weekly_update_id = :id"), {"id": weekly_update_id})
-
-    for i, milestone in enumerate(payload.get("milestones", []), start=1):
-        conn.execute(
-            text(
-                """
-                INSERT INTO app.weekly_update_milestone (
-                    weekly_update_id, sort_order, milestone_name, planned_date,
-                    forecast_date, milestone_status, comment
-                ) VALUES (
-                    :weekly_update_id, :sort_order, :milestone_name, :planned_date,
-                    :forecast_date, :milestone_status, :comment
-                )
-                """
-            ),
-            {"weekly_update_id": weekly_update_id, "sort_order": i, **milestone},
+    with conn.cursor() as cursor:
+        cursor.execute(
+            _to_psycopg2_query("DELETE FROM app.weekly_update_milestone WHERE weekly_update_id = :id"),
+            {"id": weekly_update_id},
+        )
+        cursor.execute(
+            _to_psycopg2_query("DELETE FROM app.weekly_update_risk WHERE weekly_update_id = :id"),
+            {"id": weekly_update_id},
+        )
+        cursor.execute(
+            _to_psycopg2_query("DELETE FROM app.weekly_update_decision WHERE weekly_update_id = :id"),
+            {"id": weekly_update_id},
         )
 
-    for i, risk in enumerate(payload.get("risks", []), start=1):
-        conn.execute(
-            text(
-                """
-                INSERT INTO app.weekly_update_risk (
-                    weekly_update_id, sort_order, severity, title, owner_name,
-                    target_date, description, mitigation_plan
-                ) VALUES (
-                    :weekly_update_id, :sort_order, :severity, :title, :owner_name,
-                    :target_date, :description, :mitigation_plan
-                )
-                """
-            ),
-            {"weekly_update_id": weekly_update_id, "sort_order": i, **risk},
-        )
+        for i, milestone in enumerate(payload.get("milestones", []), start=1):
+            cursor.execute(
+                _to_psycopg2_query(
+                    """
+                    INSERT INTO app.weekly_update_milestone (
+                        weekly_update_id, sort_order, milestone_name, planned_date,
+                        forecast_date, milestone_status, comment
+                    ) VALUES (
+                        :weekly_update_id, :sort_order, :milestone_name, :planned_date,
+                        :forecast_date, :milestone_status, :comment
+                    )
+                    """
+                ),
+                {"weekly_update_id": weekly_update_id, "sort_order": i, **milestone},
+            )
 
-    for i, decision in enumerate(payload.get("decisions", []), start=1):
-        conn.execute(
-            text(
-                """
-                INSERT INTO app.weekly_update_decision (
-                    weekly_update_id, sort_order, decision_topic, required_by,
-                    impact_if_unresolved, recommendation
-                ) VALUES (
-                    :weekly_update_id, :sort_order, :decision_topic, :required_by,
-                    :impact_if_unresolved, :recommendation
-                )
-                """
-            ),
-            {"weekly_update_id": weekly_update_id, "sort_order": i, **decision},
-        )
+        for i, risk in enumerate(payload.get("risks", []), start=1):
+            cursor.execute(
+                _to_psycopg2_query(
+                    """
+                    INSERT INTO app.weekly_update_risk (
+                        weekly_update_id, sort_order, severity, title, owner_name,
+                        target_date, description, mitigation_plan
+                    ) VALUES (
+                        :weekly_update_id, :sort_order, :severity, :title, :owner_name,
+                        :target_date, :description, :mitigation_plan
+                    )
+                    """
+                ),
+                {"weekly_update_id": weekly_update_id, "sort_order": i, **risk},
+            )
+
+        for i, decision in enumerate(payload.get("decisions", []), start=1):
+            cursor.execute(
+                _to_psycopg2_query(
+                    """
+                    INSERT INTO app.weekly_update_decision (
+                        weekly_update_id, sort_order, decision_topic, required_by,
+                        impact_if_unresolved, recommendation
+                    ) VALUES (
+                        :weekly_update_id, :sort_order, :decision_topic, :required_by,
+                        :impact_if_unresolved, :recommendation
+                    )
+                    """
+                ),
+                {"weekly_update_id": weekly_update_id, "sort_order": i, **decision},
+            )
 
 
 def save_weekly_update_draft(payload: dict[str, Any]) -> str:
@@ -263,13 +275,14 @@ def submit_weekly_update(payload: dict[str, Any]) -> str:
     with connection() as conn:
         weekly_update_id = _upsert_weekly_update(conn, payload, "submitted")
         _replace_children(conn, weekly_update_id, payload)
-        conn.execute(
-            text("SELECT publish_weekly_update(:weekly_update_id, :submitted_by_user_id)"),
-            {
-                "weekly_update_id": weekly_update_id,
-                "submitted_by_user_id": _as_uuid_or_none(payload.get("submitted_by")),
-            },
-        )
+        with conn.cursor() as cursor:
+            cursor.execute(
+                _to_psycopg2_query("SELECT publish_weekly_update(:weekly_update_id, :submitted_by_user_id)"),
+                {
+                    "weekly_update_id": weekly_update_id,
+                    "submitted_by_user_id": _as_uuid_or_none(payload.get("submitted_by")),
+                },
+            )
     return weekly_update_id
 
 

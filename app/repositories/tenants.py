@@ -1,11 +1,19 @@
 from __future__ import annotations
 
-from sqlalchemy import select
-
-from app.core.db import db_session
-from app.models.sqlalchemy_models import Tenant
+from app.db import fetch_all
 
 
-def list_active_tenants() -> list[Tenant]:
-    with db_session() as session:
-        return list(session.scalars(select(Tenant).where(Tenant.is_active.is_(True))).all())
+def list_active_tenants() -> list[dict]:
+    return fetch_all(
+        """
+        SELECT id::text AS id,
+               slug,
+               name,
+               tenant_type,
+               is_active,
+               created_at,
+               updated_at
+        FROM tenants
+        WHERE is_active IS TRUE
+        """
+    )

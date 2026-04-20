@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from sqlalchemy import func, select
-
-from app.core.db import db_session
-from app.models.sqlalchemy_models import WorkItemCurrent
+from app.db import fetch_all
 
 
 def count_by_state() -> list[tuple[str, int]]:
-    with db_session() as session:
-        rows = session.execute(
-            select(WorkItemCurrent.state, func.count()).group_by(WorkItemCurrent.state)
-        ).all()
-        return [(r[0] or "Unknown", r[1]) for r in rows]
+    rows = fetch_all(
+        """
+        SELECT COALESCE(state, 'Unknown') AS state,
+               COUNT(*)::int AS count
+        FROM work_item_current
+        GROUP BY COALESCE(state, 'Unknown')
+        """
+    )
+    return [(str(row["state"]), int(row["count"])) for row in rows]
