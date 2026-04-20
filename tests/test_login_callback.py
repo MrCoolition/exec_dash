@@ -59,17 +59,19 @@ def test_main_authenticated_runs_navigation(monkeypatch):
 
 
 def test_logout_clears_app_state(monkeypatch):
-    called = {"clear": False, "logout": False, "qp": False}
+    called = {"clear": False, "rerun": False, "qp": False}
+    monkeypatch.setattr(streamlit_app.st, "session_state", {})
 
     monkeypatch.setattr(streamlit_app, "clear_auth_session_state", lambda: called.__setitem__("clear", True))
-    monkeypatch.setattr(streamlit_app.st, "logout", lambda: called.__setitem__("logout", True))
+    monkeypatch.setattr(streamlit_app.st, "rerun", lambda: called.__setitem__("rerun", True))
     monkeypatch.setattr(streamlit_app.st, "query_params", type("QP", (), {"clear": lambda self: called.__setitem__("qp", True)})())
 
     streamlit_app._logout()
 
     assert called["clear"] is True
-    assert called["logout"] is True
+    assert called["rerun"] is True
     assert called["qp"] is True
+    assert streamlit_app.st.session_state["force_logged_out"] is True
 
 
 def test_safe_is_logged_in_handles_unexpected_errors(monkeypatch):
@@ -79,5 +81,12 @@ def test_safe_is_logged_in_handles_unexpected_errors(monkeypatch):
             raise RuntimeError("unexpected callback handling error")
 
     monkeypatch.setattr(streamlit_app.st, "user", BrokenUser())
+
+    assert streamlit_app.safe_is_logged_in() is False
+
+
+def test_safe_is_logged_in_honors_force_logged_out(monkeypatch):
+    monkeypatch.setattr(streamlit_app.st, "session_state", {"force_logged_out": True})
+    monkeypatch.setattr(streamlit_app.st, "user", type("User", (), {"is_logged_in": True})())
 
     assert streamlit_app.safe_is_logged_in() is False
