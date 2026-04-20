@@ -134,7 +134,7 @@ def render(ctx: UserContext) -> None:
         pd.DataFrame(st.session_state.get("wu_milestones", [])),
         key="wu_milestones_editor",
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         column_config={
             "milestone_name": "Milestone Name",
             "planned_date": st.column_config.DateColumn("Planned Date"),
@@ -155,7 +155,7 @@ def render(ctx: UserContext) -> None:
         pd.DataFrame(st.session_state.get("wu_risks", [])),
         key="wu_risks_editor",
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         column_config={
             "severity": st.column_config.SelectboxColumn("Severity", options=sorted(RISK_SEVERITY_OPTIONS)),
             "risk_title": "Risk Title",
@@ -171,7 +171,7 @@ def render(ctx: UserContext) -> None:
         pd.DataFrame(st.session_state.get("wu_decisions", [])),
         key="wu_decisions_editor",
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         column_config={
             "decision_topic": "Decision Topic",
             "required_by": st.column_config.DateColumn("Required By"),

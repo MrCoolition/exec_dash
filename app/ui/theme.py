@@ -29,7 +29,7 @@ def inject_theme_overrides() -> None:
           --soft:#f6f8fc; --green:#2e8b6f; --yellow:#d3a23c; --red:#cf5c5c;
         }
         .stApp { background: var(--soft); color: var(--text); }
-        .block-container {padding-top: 1.1rem; max-width: 1320px;}
+        .block-container {padding-top: 2.75rem; max-width: 1320px;}
         .topbar, .dashboard-title-block, .dash-kpi, .dash-card, .weekly-hero, .ws-card, .decision-card {
             background: var(--panel); border:1px solid var(--border); border-radius: 14px;
         }
