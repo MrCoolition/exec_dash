@@ -42,6 +42,14 @@ def _coerce_mapping(value: object) -> Mapping[str, object]:
 def _as_clean_str(value: object) -> str:
     return str(value or "").strip()
 
+def _looks_like_placeholder(value: str) -> bool:
+    if not value:
+        return False
+    normalized = value.strip()
+    upper = normalized.upper()
+    placeholder_tokens = ("<", ">", "YOUR_", "CHANGEME", "REPLACE_ME", "REPLACE-WITH")
+    return any(token in upper for token in placeholder_tokens)
+
 
 def load_canonical_auth_secrets(raw_secrets: Mapping[str, object] | None = None) -> dict[str, str]:
     secrets = raw_secrets if raw_secrets is not None else st.secrets
@@ -66,6 +74,17 @@ def validate_canonical_auth_config(raw_secrets: Mapping[str, object] | None = No
     for key, value in canonical.items():
         if not value:
             errors.append(f"Missing required secret: auth{'.auth0' if key in {'client_id', 'client_secret', 'server_metadata_url'} else ''}.{key}")
+
+    sensitive_fields = ("cookie_secret", "client_id", "client_secret")
+    for key in sensitive_fields:
+        value = canonical.get(key, "")
+        if value and _looks_like_placeholder(value):
+            errors.append(
+                f"auth{'.auth0' if key in {'client_id', 'client_secret'} else ''}.{key} appears to be a placeholder; set the real secret value."
+            )
+
+    if canonical["client_secret"] and len(canonical["client_secret"]) < 12:
+        errors.append("auth.auth0.client_secret appears too short; verify you copied the full Auth0 client secret.")
 
     redirect_uri = canonical["redirect_uri"]
     if redirect_uri:
