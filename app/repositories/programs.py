@@ -16,7 +16,17 @@ def list_programs() -> list[dict]:
                current_milestone_date AS next_milestone_date,
                summary, upcoming_work, risk_detail, mitigation,
                decision_needed, status_note, next_step,
-               open_risks_count, escalations_count
+               open_risks_count, escalations_count,
+               portfolio_name AS portfolio_name,
+               priority,
+               planned_start_date,
+               planned_end_date,
+               delivery_health,
+               tech_health,
+               team_health,
+               last_submitted_update_id,
+               created_at,
+               updated_at
         FROM app.v_program_current_snapshot
         WHERE COALESCE(is_active, TRUE)
         ORDER BY program_name
@@ -37,7 +47,17 @@ def get_program(program_id: str) -> dict | None:
                current_milestone_date AS next_milestone_date,
                summary, upcoming_work, risk_detail, mitigation,
                decision_needed, status_note, next_step,
-               open_risks_count, escalations_count
+               open_risks_count, escalations_count,
+               portfolio_name AS portfolio_name,
+               priority,
+               planned_start_date,
+               planned_end_date,
+               delivery_health,
+               tech_health,
+               team_health,
+               last_submitted_update_id,
+               created_at,
+               updated_at
         FROM app.v_program_current_snapshot
         WHERE program_id = :program_id
         """,
@@ -58,7 +78,17 @@ def list_program_snapshots_by_portfolio(portfolio_id: str) -> list[dict]:
                current_milestone_date AS next_milestone_date,
                summary, upcoming_work, risk_detail, mitigation,
                decision_needed, status_note, next_step,
-               open_risks_count, escalations_count
+               open_risks_count, escalations_count,
+               portfolio_name AS portfolio_name,
+               priority,
+               planned_start_date,
+               planned_end_date,
+               delivery_health,
+               tech_health,
+               team_health,
+               last_submitted_update_id,
+               created_at,
+               updated_at
         FROM app.v_program_current_snapshot
         WHERE portfolio_id = :portfolio_id
           AND COALESCE(is_active, TRUE)
