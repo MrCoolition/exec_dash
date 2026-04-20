@@ -144,11 +144,11 @@ def load_config() -> AppConfig:
     db = st.secrets.get("database", {})
     aiven = st.secrets.get("aiven", {})
     ado = st.secrets.get("azure_devops", {})
-    db_aiven_host = db.get("AIVEN_HOST") or aiven.get("host")
-    db_aiven_user = db.get("AIVEN_USER") or aiven.get("user")
-    db_aiven_password = db.get("AIVEN_PASSWORD") or aiven.get("password")
-    db_aiven_port = db.get("AIVEN_PORT") or aiven.get("port") or "5432"
-    db_aiven_name = db.get("AIVEN_DB") or aiven.get("db") or aiven.get("database")
+    db_aiven_host = _as_clean_str(db.get("AIVEN_HOST") or aiven.get("host"))
+    db_aiven_user = _as_clean_str(db.get("AIVEN_USER") or aiven.get("user"))
+    db_aiven_password = _as_clean_str(db.get("AIVEN_PASSWORD") or aiven.get("password"))
+    db_aiven_port = _as_clean_str(db.get("AIVEN_PORT") or aiven.get("port") or "5432")
+    db_aiven_name = _as_clean_str(db.get("AIVEN_DB") or aiven.get("db") or aiven.get("database"))
 
     aiven_url = ""
     if db_aiven_host and db_aiven_user and db_aiven_password and db_aiven_name:
@@ -159,7 +159,7 @@ def load_config() -> AppConfig:
         name = str(db_aiven_name)
         aiven_url = f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
-    database_url = aiven_url or db.get("url")
+    database_url = _as_clean_str(aiven_url or db.get("url"))
 
     sslmode = db.get("sslmode", "verify-ca")
     if db_aiven_host and not db.get("sslmode"):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tempfile
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from psycopg2.pool import ThreadedConnectionPool
 
@@ -11,7 +11,7 @@ from app.core.config import load_config
 
 def _pool_kwargs_from_config() -> dict[str, object]:
     cfg = load_config().database
-    parsed = urlparse(cfg.url)
+    parsed = urlparse(cfg.url.strip())
 
     if parsed.scheme not in {"postgres", "postgresql"}:
         raise RuntimeError(
@@ -21,8 +21,8 @@ def _pool_kwargs_from_config() -> dict[str, object]:
     kwargs: dict[str, object] = {
         "host": parsed.hostname,
         "port": parsed.port or 5432,
-        "user": parsed.username,
-        "password": parsed.password,
+        "user": unquote(parsed.username or ""),
+        "password": unquote(parsed.password or ""),
         "dbname": (parsed.path or "/").lstrip("/"),
         "sslmode": cfg.sslmode,
     }
