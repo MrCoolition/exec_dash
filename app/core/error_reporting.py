@@ -2,11 +2,65 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
+from urllib.parse import urlparse
 
 import streamlit as st
 
 
 _LOG = logging.getLogger(__name__)
+
+
+def _mask(value: str, visible: int = 2) -> str:
+    clean = str(value or "")
+    if not clean:
+        return "(missing)"
+    if len(clean) <= visible:
+        return "*" * len(clean)
+    return f"{clean[:visible]}{'*' * (len(clean) - visible)}"
+
+
+def _db_auth_diagnostics(exc: Exception) -> dict[str, str] | None:
+    message = str(exc)
+    lowered = message.lower()
+    if "password authentication failed for user" not in lowered:
+        return None
+
+    details: dict[str, str] = {
+        "error_type": type(exc).__name__,
+        "failure": "PostgreSQL rejected credentials (password authentication failed)",
+    }
+
+    try:
+        quoted_user_start = message.index('user "') + len('user "')
+        quoted_user_end = message.index('"', quoted_user_start)
+        user = message[quoted_user_start:quoted_user_end]
+        details["db_user"] = _mask(user, visible=3)
+    except ValueError:
+        details["db_user"] = "(unavailable)"
+
+    try:
+        host_start = message.index('server at "') + len('server at "')
+        host_end = message.index('"', host_start)
+        details["db_host"] = message[host_start:host_end]
+    except ValueError:
+        details["db_host"] = "(unavailable)"
+
+    try:
+        port_token = "port "
+        port_start = message.index(port_token) + len(port_token)
+        port_end = message.index(" failed", port_start)
+        details["db_port"] = message[port_start:port_end]
+    except ValueError:
+        details["db_port"] = "(unavailable)"
+
+    try:
+        parsed = urlparse(str(getattr(exc, "dsn", "") or ""))
+        if parsed.path:
+            details["db_name"] = parsed.path.lstrip("/") or "(missing)"
+    except Exception:
+        pass
+
+    return details
 
 
 def render_internal_error(exc: Exception, context: str) -> None:
@@ -16,3 +70,30 @@ def render_internal_error(exc: Exception, context: str) -> None:
     st.error("Something went wrong while loading this page.")
     st.caption(f"Reference: {request_id} (UTC)")
     st.info("Please retry. If the issue continues, contact support and include the reference above.")
+
+    db_diag = _db_auth_diagnostics(exc)
+    if db_diag:
+        st.warning("Database login failed. The app cannot load until DB credentials are corrected.")
+        st.markdown("### Self-troubleshooting")
+        st.markdown(
+            "- Confirm `database.url` (or `AIVEN_*` secrets) uses the current DB username/password.\n"
+            "- If password was rotated, update Streamlit secrets and redeploy/restart the app.\n"
+            "- Ensure username has access to the configured database and host."
+        )
+
+        with st.expander("Diagnostic details", expanded=True):
+            st.code(
+                "\n".join(
+                    (
+                        f"reference={request_id}",
+                        f"context={context}",
+                        f"error_type={db_diag.get('error_type', '(unknown)')}",
+                        f"failure={db_diag.get('failure', '(unknown)')}",
+                        f"db_host={db_diag.get('db_host', '(unknown)')}",
+                        f"db_port={db_diag.get('db_port', '(unknown)')}",
+                        f"db_user={db_diag.get('db_user', '(unknown)')}",
+                        f"db_name={db_diag.get('db_name', '(unknown)')}",
+                    )
+                ),
+                language="text",
+            )
