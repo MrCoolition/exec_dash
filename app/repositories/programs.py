@@ -6,14 +6,20 @@ from app.db import fetch_all, fetch_one
 def list_programs() -> list[dict]:
     return fetch_all(
         """
-        SELECT id, portfolio_id, name, sponsor_name, owner_name,
+        SELECT program_id AS id,
+               portfolio_id,
+               program_name AS name,
+               executive_sponsor AS sponsor_name,
+               program_lead AS owner_name,
                current_status, current_phase, percent_complete,
-               next_milestone_name, next_milestone_date,
+               current_milestone_name AS next_milestone_name,
+               current_milestone_date AS next_milestone_date,
                summary, upcoming_work, risk_detail, mitigation,
                decision_needed, status_note, next_step,
                open_risks_count, escalations_count
-        FROM program
-        ORDER BY name
+        FROM app.v_program_current_snapshot
+        WHERE COALESCE(is_active, TRUE)
+        ORDER BY program_name
         """
     )
 
@@ -21,14 +27,19 @@ def list_programs() -> list[dict]:
 def get_program(program_id: str) -> dict | None:
     return fetch_one(
         """
-        SELECT id, portfolio_id, name, sponsor_name, owner_name,
+        SELECT program_id AS id,
+               portfolio_id,
+               program_name AS name,
+               executive_sponsor AS sponsor_name,
+               program_lead AS owner_name,
                current_status, current_phase, percent_complete,
-               next_milestone_name, next_milestone_date,
+               current_milestone_name AS next_milestone_name,
+               current_milestone_date AS next_milestone_date,
                summary, upcoming_work, risk_detail, mitigation,
                decision_needed, status_note, next_step,
                open_risks_count, escalations_count
-        FROM program
-        WHERE id = :program_id
+        FROM app.v_program_current_snapshot
+        WHERE program_id = :program_id
         """,
         {"program_id": program_id},
     )
@@ -37,15 +48,21 @@ def get_program(program_id: str) -> dict | None:
 def list_program_snapshots_by_portfolio(portfolio_id: str) -> list[dict]:
     return fetch_all(
         """
-        SELECT id, portfolio_id, name, sponsor_name, owner_name,
+        SELECT program_id AS id,
+               portfolio_id,
+               program_name AS name,
+               executive_sponsor AS sponsor_name,
+               program_lead AS owner_name,
                current_status, current_phase, percent_complete,
-               next_milestone_name, next_milestone_date,
+               current_milestone_name AS next_milestone_name,
+               current_milestone_date AS next_milestone_date,
                summary, upcoming_work, risk_detail, mitigation,
                decision_needed, status_note, next_step,
                open_risks_count, escalations_count
-        FROM program
+        FROM app.v_program_current_snapshot
         WHERE portfolio_id = :portfolio_id
-        ORDER BY name
+          AND COALESCE(is_active, TRUE)
+        ORDER BY program_name
         """,
         {"portfolio_id": portfolio_id},
     )

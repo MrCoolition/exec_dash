@@ -6,9 +6,13 @@ from app.db import fetch_all, fetch_one
 def list_portfolios() -> list[dict]:
     return fetch_all(
         """
-        SELECT id, name, owner_name, description
-        FROM portfolio
-        ORDER BY name
+        SELECT portfolio_id AS id,
+               portfolio_name AS name,
+               NULL::text AS owner_name,
+               NULL::text AS description
+        FROM app.portfolio
+        WHERE is_active = TRUE
+        ORDER BY sort_order, portfolio_name
         """
     )
 
@@ -16,10 +20,13 @@ def list_portfolios() -> list[dict]:
 def get_portfolio_by_program(program_id: str) -> dict | None:
     return fetch_one(
         """
-        SELECT p.id, p.name, p.owner_name, p.description
-        FROM portfolio p
-        JOIN program pr ON pr.portfolio_id = p.id
-        WHERE pr.id = :program_id
+        SELECT p.portfolio_id AS id,
+               p.portfolio_name AS name,
+               NULL::text AS owner_name,
+               NULL::text AS description
+        FROM app.portfolio p
+        JOIN app.program pr ON pr.portfolio_id = p.portfolio_id
+        WHERE pr.program_id = :program_id
         """,
         {"program_id": program_id},
     )
@@ -28,9 +35,12 @@ def get_portfolio_by_program(program_id: str) -> dict | None:
 def get_portfolio(portfolio_id: str) -> dict | None:
     return fetch_one(
         """
-        SELECT id, name, owner_name, description
-        FROM portfolio
-        WHERE id = :portfolio_id
+        SELECT portfolio_id AS id,
+               portfolio_name AS name,
+               NULL::text AS owner_name,
+               NULL::text AS description
+        FROM app.portfolio
+        WHERE portfolio_id = :portfolio_id
         """,
         {"portfolio_id": portfolio_id},
     )
