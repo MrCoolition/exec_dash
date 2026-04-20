@@ -9,7 +9,7 @@ def inject_theme_overrides() -> None:
         <style>
         :root { --navy:#0f2d52; --blue:#2563eb; --bg:#f5f7fb; --card:#ffffff; --line:#dbe3f0; }
         .stApp { background: var(--bg); }
-        .block-container {padding-top: 1.0rem; max-width: 1260px;}
+        .block-container {padding-top: 2.25rem; max-width: 1260px;}
         div[data-testid="stMetric"] {border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: .6rem;}
         .hero, .metric-card, .section-bar, .stDataFrame, div[data-testid="stVerticalBlock"] > div:has(> .stTextArea), .empty-state {
             border-radius: 14px;
