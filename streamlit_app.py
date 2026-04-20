@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping, MutableMapping
 from urllib.parse import urlparse
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"authlib\.jose module is deprecated, please use joserfc instead\.",
+    category=DeprecationWarning,
+)
 
 import streamlit as st
 from streamlit.errors import StreamlitAuthError, StreamlitSecretNotFoundError
