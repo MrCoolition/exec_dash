@@ -68,3 +68,18 @@ def test_clear_auth_session_state_resets_expected_keys(monkeypatch):
     assert auth.st.session_state["user_roles"] == ["user"]
     assert "auth_callback_attempts" not in auth.st.session_state
     assert "auth_callback_marker" not in auth.st.session_state
+
+
+def test_sync_user_from_oidc_handles_user_state_errors(monkeypatch):
+    class BrokenUser:
+        @property
+        def is_logged_in(self):
+            raise RuntimeError("callback state parse failed")
+
+    monkeypatch.setattr(auth.st, "user", BrokenUser())
+    monkeypatch.setattr(auth.st, "session_state", {})
+
+    auth.sync_user_from_oidc()
+
+    assert auth.st.session_state["authenticated"] is False
+    assert auth.st.session_state["user_roles"] == ["user"]
