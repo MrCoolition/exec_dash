@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import text
 
@@ -24,7 +25,7 @@ def _clean_milestones(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "milestone_name": (row.get("milestone_name") or "").strip() or None,
                     "planned_date": row.get("planned_date"),
                     "forecast_date": row.get("forecast_date"),
-                    "status": (row.get("status") or "").strip() or None,
+                    "milestone_status": (row.get("status") or "").strip() or None,
                     "comment": (row.get("comment") or "").strip() or None,
                 }
             )
@@ -38,11 +39,11 @@ def _clean_risks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             cleaned.append(
                 {
                     "severity": (row.get("severity") or "").strip() or None,
-                    "risk_title": (row.get("risk_title") or "").strip() or None,
+                    "title": (row.get("risk_title") or "").strip() or None,
                     "owner_name": (row.get("owner_name") or "").strip() or None,
                     "target_date": row.get("target_date"),
                     "description": (row.get("description") or "").strip() or None,
-                    "mitigation": (row.get("mitigation") or "").strip() or None,
+                    "mitigation_plan": (row.get("mitigation") or "").strip() or None,
                 }
             )
     return cleaned
@@ -87,11 +88,11 @@ def _validate_payload(payload: dict[str, Any]) -> dict[str, Any]:
 def get_weekly_update(program_id: str, week_ending: date) -> dict | None:
     return fetch_one(
         """
-        SELECT id, program_id, week_ending, update_status,
+        SELECT weekly_update_id AS id, program_id, week_ending, update_state AS update_status,
                overall_status, current_phase, percent_complete, trend,
                accomplishments, dependencies, next_steps, executive_summary,
-               submitted_at, submitted_by
-        FROM weekly_update
+               submitted_at, submitted_by_user_id::text AS submitted_by
+        FROM app.weekly_update
         WHERE program_id = :program_id AND week_ending = :week_ending
         """,
         {"program_id": program_id, "week_ending": week_ending},
@@ -101,8 +102,8 @@ def get_weekly_update(program_id: str, week_ending: date) -> dict | None:
 def list_milestones(weekly_update_id: str) -> list[dict]:
     return fetch_all(
         """
-        SELECT milestone_name, planned_date, forecast_date, status, comment, sort_order
-        FROM weekly_update_milestone
+        SELECT milestone_name, planned_date, forecast_date, milestone_status AS status, comment, sort_order
+        FROM app.weekly_update_milestone
         WHERE weekly_update_id = :weekly_update_id
         ORDER BY sort_order
         """,
@@ -113,8 +114,8 @@ def list_milestones(weekly_update_id: str) -> list[dict]:
 def list_risks(weekly_update_id: str) -> list[dict]:
     return fetch_all(
         """
-        SELECT severity, risk_title, owner_name, target_date, description, mitigation, sort_order
-        FROM weekly_update_risk
+        SELECT severity, title AS risk_title, owner_name, target_date, description, mitigation_plan AS mitigation, sort_order
+        FROM app.weekly_update_risk
         WHERE weekly_update_id = :weekly_update_id
         ORDER BY sort_order
         """,
@@ -126,7 +127,7 @@ def list_decisions(weekly_update_id: str) -> list[dict]:
     return fetch_all(
         """
         SELECT decision_topic, required_by, impact_if_unresolved, recommendation, sort_order
-        FROM weekly_update_decision
+        FROM app.weekly_update_decision
         WHERE weekly_update_id = :weekly_update_id
         ORDER BY sort_order
         """,
@@ -134,21 +135,31 @@ def list_decisions(weekly_update_id: str) -> list[dict]:
     )
 
 
+def _as_uuid_or_none(raw_value: str | None) -> str | None:
+    if not raw_value:
+        return None
+    try:
+        return str(UUID(raw_value))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
 def _upsert_weekly_update(conn, payload: dict[str, Any], update_status: str) -> str:
+    user_id = _as_uuid_or_none(payload.get("submitted_by"))
     result = conn.execute(
         text(
             """
-            INSERT INTO weekly_update (
-                program_id, week_ending, update_status, overall_status, current_phase,
+            INSERT INTO app.weekly_update (
+                program_id, week_ending, update_state, overall_status, current_phase,
                 percent_complete, trend, accomplishments, dependencies, next_steps,
-                executive_summary, submitted_at, submitted_by, updated_at
+                executive_summary, submitted_at, submitted_by_user_id, updated_by_user_id, updated_at
             ) VALUES (
                 :program_id, :week_ending, :update_status, :overall_status, :current_phase,
                 :percent_complete, :trend, :accomplishments, :dependencies, :next_steps,
-                :executive_summary, :submitted_at, :submitted_by, :updated_at
+                :executive_summary, :submitted_at, :submitted_by, :updated_by, :updated_at
             )
             ON CONFLICT (program_id, week_ending) DO UPDATE SET
-                update_status = EXCLUDED.update_status,
+                update_state = EXCLUDED.update_state,
                 overall_status = EXCLUDED.overall_status,
                 current_phase = EXCLUDED.current_phase,
                 percent_complete = EXCLUDED.percent_complete,
@@ -158,9 +169,10 @@ def _upsert_weekly_update(conn, payload: dict[str, Any], update_status: str) -> 
                 next_steps = EXCLUDED.next_steps,
                 executive_summary = EXCLUDED.executive_summary,
                 submitted_at = EXCLUDED.submitted_at,
-                submitted_by = EXCLUDED.submitted_by,
+                submitted_by_user_id = EXCLUDED.submitted_by_user_id,
+                updated_by_user_id = EXCLUDED.updated_by_user_id,
                 updated_at = EXCLUDED.updated_at
-            RETURNING id
+            RETURNING weekly_update_id
             """
         ),
         {
@@ -176,7 +188,8 @@ def _upsert_weekly_update(conn, payload: dict[str, Any], update_status: str) -> 
             "next_steps": payload.get("next_steps"),
             "executive_summary": payload.get("executive_summary"),
             "submitted_at": datetime.utcnow() if update_status == "submitted" else None,
-            "submitted_by": payload.get("submitted_by") if update_status == "submitted" else None,
+            "submitted_by": user_id if update_status == "submitted" else None,
+            "updated_by": user_id,
             "updated_at": datetime.utcnow(),
         },
     )
@@ -184,20 +197,20 @@ def _upsert_weekly_update(conn, payload: dict[str, Any], update_status: str) -> 
 
 
 def _replace_children(conn, weekly_update_id: str, payload: dict[str, Any]) -> None:
-    conn.execute(text("DELETE FROM weekly_update_milestone WHERE weekly_update_id = :id"), {"id": weekly_update_id})
-    conn.execute(text("DELETE FROM weekly_update_risk WHERE weekly_update_id = :id"), {"id": weekly_update_id})
-    conn.execute(text("DELETE FROM weekly_update_decision WHERE weekly_update_id = :id"), {"id": weekly_update_id})
+    conn.execute(text("DELETE FROM app.weekly_update_milestone WHERE weekly_update_id = :id"), {"id": weekly_update_id})
+    conn.execute(text("DELETE FROM app.weekly_update_risk WHERE weekly_update_id = :id"), {"id": weekly_update_id})
+    conn.execute(text("DELETE FROM app.weekly_update_decision WHERE weekly_update_id = :id"), {"id": weekly_update_id})
 
     for i, milestone in enumerate(payload.get("milestones", []), start=1):
         conn.execute(
             text(
                 """
-                INSERT INTO weekly_update_milestone (
+                INSERT INTO app.weekly_update_milestone (
                     weekly_update_id, sort_order, milestone_name, planned_date,
-                    forecast_date, status, comment
+                    forecast_date, milestone_status, comment
                 ) VALUES (
                     :weekly_update_id, :sort_order, :milestone_name, :planned_date,
-                    :forecast_date, :status, :comment
+                    :forecast_date, :milestone_status, :comment
                 )
                 """
             ),
@@ -208,12 +221,12 @@ def _replace_children(conn, weekly_update_id: str, payload: dict[str, Any]) -> N
         conn.execute(
             text(
                 """
-                INSERT INTO weekly_update_risk (
-                    weekly_update_id, sort_order, severity, risk_title, owner_name,
-                    target_date, description, mitigation
+                INSERT INTO app.weekly_update_risk (
+                    weekly_update_id, sort_order, severity, title, owner_name,
+                    target_date, description, mitigation_plan
                 ) VALUES (
-                    :weekly_update_id, :sort_order, :severity, :risk_title, :owner_name,
-                    :target_date, :description, :mitigation
+                    :weekly_update_id, :sort_order, :severity, :title, :owner_name,
+                    :target_date, :description, :mitigation_plan
                 )
                 """
             ),
@@ -224,7 +237,7 @@ def _replace_children(conn, weekly_update_id: str, payload: dict[str, Any]) -> N
         conn.execute(
             text(
                 """
-                INSERT INTO weekly_update_decision (
+                INSERT INTO app.weekly_update_decision (
                     weekly_update_id, sort_order, decision_topic, required_by,
                     impact_if_unresolved, recommendation
                 ) VALUES (
@@ -254,7 +267,7 @@ def submit_weekly_update(payload: dict[str, Any]) -> str:
             text("SELECT publish_weekly_update(:weekly_update_id, :submitted_by_user_id)"),
             {
                 "weekly_update_id": weekly_update_id,
-                "submitted_by_user_id": payload.get("submitted_by"),
+                "submitted_by_user_id": _as_uuid_or_none(payload.get("submitted_by")),
             },
         )
     return weekly_update_id
@@ -275,11 +288,15 @@ def reset_weekly_update(program_id: str, week_ending: date) -> dict | None:
 def get_latest_submitted_update(program_id: str) -> dict | None:
     update = fetch_one(
         """
-        SELECT id, program_id, week_ending, overall_status, current_phase,
+        SELECT weekly_update_id AS id,
+               program_id,
+               week_ending,
+               overall_status,
+               current_phase,
                percent_complete, trend, accomplishments, dependencies,
                next_steps, executive_summary
-        FROM weekly_update
-        WHERE program_id = :program_id AND update_status = 'submitted'
+        FROM app.v_latest_submitted_update
+        WHERE program_id = :program_id AND update_state = 'submitted'
         ORDER BY week_ending DESC
         LIMIT 1
         """,
