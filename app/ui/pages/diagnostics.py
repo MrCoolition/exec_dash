@@ -15,4 +15,4 @@ def render(ctx: UserContext) -> None:
     st.dataframe([
         {"dataset": "work_items", "last_success": "n/a", "status": "unknown"},
         {"dataset": "iterations", "last_success": "n/a", "status": "unknown"},
-    ], use_container_width=True)
+    ], width="stretch")

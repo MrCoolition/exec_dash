@@ -16,4 +16,4 @@ def render() -> None:
     c2.metric("Complete", rollup["complete"])
     c3.metric("Overdue", rollup["overdue"])
     c4.metric("Completion", f"{rollup['completion_percent']}%")
-    st.altair_chart(status_mix_chart(count_by_state() or [("Done", 1), ("Active", 1)]), use_container_width=True)
+    st.altair_chart(status_mix_chart(count_by_state() or [("Done", 1), ("Active", 1)]), width="stretch")
