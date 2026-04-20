@@ -15,12 +15,11 @@ def test_clean_decisions_drops_blank_rows():
     assert cleaned[0]["decision_topic"] == "Approve budget"
 
 
-def test_submitted_by_resolution_uses_ctx_user_email_then_sub():
-    ctx_email = UserContext(user=User(provider="auth0", provider_sub="sub-1", email="leader@example.com"), role_codes={"user"}, tenant_slugs=["default"])
-    ctx_sub = UserContext(user=User(provider="auth0", provider_sub="sub-2", email=None), role_codes={"user"}, tenant_slugs=["default"])
+def test_submitted_by_resolution_uses_app_user_lookup(monkeypatch):
+    ctx = UserContext(user=User(provider="auth0", provider_sub="sub-1", email="leader@example.com"), role_codes={"user"}, tenant_slugs=["default"])
 
-    assert update_center._submitted_by(ctx_email) == "leader@example.com"
-    assert update_center._submitted_by(ctx_sub) == "sub-2"
+    monkeypatch.setattr(update_center, "resolve_app_user_id", lambda auth_subject, email: "11111111-1111-1111-1111-111111111111")
+    assert update_center._submitted_by(ctx) == "11111111-1111-1111-1111-111111111111"
 
 
 def test_portfolio_decision_counts_ignore_blank():

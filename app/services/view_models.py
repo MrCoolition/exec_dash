@@ -10,7 +10,13 @@ def build_portfolio_kpis(programs: list[dict]) -> dict:
     at_risk = sum(1 for p in programs if (p.get("current_status") or "") == "At Risk")
     needs_attention = sum(1 for p in programs if (p.get("current_status") or "") == "Needs Attention")
     avg_complete = round(sum((p.get("percent_complete") or 0) for p in programs) / max(total, 1), 1)
-    decisions_pending = sum(1 for p in programs if has_text(p.get("decision_needed")))
+    decisions_pending = sum(
+        1
+        for p in programs
+        if has_text(p.get("decision_needed"))
+        and not (p.get("decision_needed") or "").strip().lower().startswith("no ")
+        and not (p.get("decision_needed") or "").strip().lower().startswith("no executive decision")
+    )
     return {
         "total": total,
         "at_risk": at_risk,

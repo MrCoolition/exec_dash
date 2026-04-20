@@ -14,13 +14,31 @@ TREND_OPTIONS = {"Up", "Flat", "Down"}
 RISK_SEVERITY_OPTIONS = {"High", "Medium", "Low", "DEP"}
 
 
+def resolve_app_user_id(auth_subject: str | None, email: str | None) -> str | None:
+    row = fetch_one(
+        """
+        SELECT user_id::text AS user_id
+        FROM app.app_user
+        WHERE (:auth_subject IS NOT NULL AND auth_subject = :auth_subject)
+           OR (:email IS NOT NULL AND email = :email)
+        ORDER BY updated_at DESC
+        LIMIT 1
+        """,
+        {"auth_subject": auth_subject, "email": email},
+    )
+    return row["user_id"] if row else None
+
+
 def _clean_milestones(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     cleaned: list[dict[str, Any]] = []
     for row in rows:
         if has_text(row.get("milestone_name")) or row.get("planned_date") or row.get("forecast_date"):
+            milestone_name = (row.get("milestone_name") or "").strip()
+            if not milestone_name:
+                continue
             cleaned.append(
                 {
-                    "milestone_name": (row.get("milestone_name") or "").strip() or None,
+                    "milestone_name": milestone_name,
                     "planned_date": row.get("planned_date"),
                     "forecast_date": row.get("forecast_date"),
                     "milestone_status": (row.get("status") or "").strip() or None,
@@ -34,10 +52,14 @@ def _clean_risks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     cleaned: list[dict[str, Any]] = []
     for row in rows:
         if has_text(row.get("risk_title")) or has_text(row.get("description")):
+            severity = (row.get("severity") or "").strip()
+            title = (row.get("risk_title") or "").strip()
+            if not severity or not title:
+                continue
             cleaned.append(
                 {
-                    "severity": (row.get("severity") or "").strip() or None,
-                    "title": (row.get("risk_title") or "").strip() or None,
+                    "severity": severity,
+                    "title": title,
                     "owner_name": (row.get("owner_name") or "").strip() or None,
                     "target_date": row.get("target_date"),
                     "description": (row.get("description") or "").strip() or None,
@@ -89,7 +111,7 @@ def get_weekly_update(program_id: str, week_ending: date) -> dict | None:
         SELECT weekly_update_id AS id, program_id, week_ending, update_state AS update_status,
                overall_status, current_phase, percent_complete, trend,
                accomplishments, dependencies, next_steps, executive_summary,
-               submitted_at, submitted_by_user_id::text AS submitted_by
+               submitted_at, updated_at, submitted_by_user_id::text AS submitted_by
         FROM app.weekly_update
         WHERE program_id = :program_id AND week_ending = :week_ending
         """,
@@ -277,7 +299,7 @@ def submit_weekly_update(payload: dict[str, Any]) -> str:
         _replace_children(conn, weekly_update_id, payload)
         with conn.cursor() as cursor:
             cursor.execute(
-                _to_psycopg2_query("SELECT publish_weekly_update(:weekly_update_id, :submitted_by_user_id)"),
+                _to_psycopg2_query("SELECT app.publish_weekly_update(:weekly_update_id, :submitted_by_user_id)"),
                 {
                     "weekly_update_id": weekly_update_id,
                     "submitted_by_user_id": _as_uuid_or_none(payload.get("submitted_by")),
@@ -307,7 +329,7 @@ def get_latest_submitted_update(program_id: str) -> dict | None:
                overall_status,
                current_phase,
                percent_complete, trend, accomplishments, dependencies,
-               next_steps, executive_summary
+               next_steps, executive_summary, submitted_at, updated_at
         FROM app.v_latest_submitted_update
         WHERE program_id = :program_id AND update_state = 'submitted'
         ORDER BY week_ending DESC
