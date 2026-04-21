@@ -157,7 +157,7 @@ def main() -> None:
             _logout()
 
     pages = build_pages(ctx)
-    selected_page = st.navigation(pages, position="hidden")
+    selected_page = st.navigation(pages, position="top")
     selected_page.run()
 
 
