@@ -390,24 +390,24 @@ def render_program_one_pager(*, portfolio: str, program: str, df: pd.DataFrame, 
       .grid-2 {{display:grid;grid-template-columns:1fr 1fr;gap:14px;}}
       .card {{background:white;border:1px solid #d6e3f1;border-radius:14px;padding:14px;}}
       .heading {{font-weight:700;color:#19324d;margin-bottom:8px;}}
-      .mstone-shell {{background:#f3f5f7;border:1px solid #c7d1dc;border-radius:20px;padding:14px 16px 12px;}}
-      .mstone-heading {{font-size:24px;font-weight:800;color:#0f2342;display:flex;align-items:center;gap:10px;line-height:1;}}
-      .mstone-heading-icon {{font-size:24px;color:#2f57cf;line-height:1;position:relative;top:-1px;}}
-      .mstone-track {{position:relative;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:16px;margin-top:16px;}}
-      .mstone-line {{position:absolute;left:10px;right:10px;top:16px;height:10px;display:flex;align-items:center;}}
-      .mstone-line::before {{content:'';display:block;width:100%;height:6px;background:#c6ccd6;border-radius:999px;}}
-      .mstone-line-complete {{position:absolute;left:0;top:2px;height:6px;width:48%;background:#2f57cf;border-radius:999px;}}
+      .mstone-shell {{background:#f3f5f7;border:1px solid #c7d1dc;border-radius:18px;padding:12px 14px 10px;}}
+      .mstone-heading {{font-size:20px;font-weight:800;color:#0f2342;display:flex;align-items:center;gap:8px;line-height:1;}}
+      .mstone-heading-icon {{font-size:20px;color:#2f57cf;line-height:1;position:relative;top:-1px;}}
+      .mstone-track {{position:relative;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:12px;margin-top:12px;}}
+      .mstone-line {{position:absolute;left:10px;right:10px;top:14px;height:8px;display:flex;align-items:center;}}
+      .mstone-line::before {{content:'';display:block;width:100%;height:5px;background:#c6ccd6;border-radius:999px;}}
+      .mstone-line-complete {{position:absolute;left:0;top:1px;height:5px;width:48%;background:#2f57cf;border-radius:999px;}}
       .mstone-step {{position:relative;z-index:2;text-align:center;}}
-      .mstone-icon-wrap {{width:42px;height:42px;border-radius:50%;margin:0 auto;border:3px solid #c9cfd8;background:#e1e5eb;display:flex;align-items:center;justify-content:center;}}
+      .mstone-icon-wrap {{width:34px;height:34px;border-radius:50%;margin:0 auto;border:2px solid #c9cfd8;background:#e1e5eb;display:flex;align-items:center;justify-content:center;}}
       .mstone-icon-wrap.done {{background:#2f57cf;border-color:#8ca6e8;}}
       .mstone-icon-wrap.current {{background:#f0ab0b;border-color:#f7d17c;}}
-      .mstone-icon {{font-size:22px;font-weight:900;line-height:1;color:#98a3b1;position:relative;top:-1px;}}
+      .mstone-icon {{font-size:18px;font-weight:900;line-height:1;color:#98a3b1;position:relative;top:-1px;}}
       .mstone-icon-wrap.done .mstone-icon,.mstone-icon-wrap.current .mstone-icon {{color:#ffffff;}}
-      .mstone-title {{margin-top:10px;font-size:20px;font-weight:800;color:#657489;line-height:1.15;}}
+      .mstone-title {{margin-top:8px;font-size:14px;font-weight:800;color:#657489;line-height:1.2;}}
       .mstone-title.done {{color:#234dc5;}}
       .mstone-title.current {{color:#ee9800;}}
-      .mstone-date {{margin-top:8px;font-size:16px;color:#67768b;line-height:1.25;}}
-      .mstone-status {{margin-top:8px;font-size:18px;font-weight:800;color:#808f9f;line-height:1.1;}}
+      .mstone-date {{margin-top:6px;font-size:11px;color:#67768b;line-height:1.25;}}
+      .mstone-status {{margin-top:6px;font-size:10px;font-weight:800;color:#808f9f;line-height:1.1;}}
       .mstone-status.done,.mstone-status.current {{color:#00a840;}}
       .decision-card {{background:#f8fbff;border:1px solid #d9e7f6;border-radius:12px;padding:10px;}}
       .risk-matrix {{width:100%;border-collapse:collapse;font-size:.82rem;}} .risk-matrix th,.risk-matrix td {{padding:6px;border-bottom:1px solid #edf3fb;text-align:left;}}
