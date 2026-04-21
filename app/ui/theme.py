@@ -32,16 +32,39 @@ def inject_theme_overrides() -> None:
         .program-grid-link { margin-top:10px; display:inline-block; background:#2f6fed; color:white; border-radius:999px; padding:8px 14px; font-weight:700; font-size:.8rem; }
         .milestone-item { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:10px 0; border-bottom:1px solid #edf3fb; }
         .milestone-datebox { min-width:52px; border:1px solid #d6e3f2; border-radius:10px; background:#f5f9ff; text-align:center; padding:6px; }
-        .priority-badge { display:inline-block; margin-top:6px; border:1px solid #d2e0ef; border-radius:999px; padding:2px 8px; font-size:.72rem; }
+        .priority-badge { display:inline-block; margin-top:6px; border:1px solid #d2e0ef; border-radius:999px; padding:4px 11px; font-size:.72rem; font-weight:700; }
+        .priority-high { background:#dff0e8; color:#1f8a57; border-color:#d0e8dc; }
+        .priority-medium { background:#f4ecdd; color:#bd8517; border-color:#eadfc8; }
+        .priority-low { background:#f4e4e8; color:#ca4c52; border-color:#ead7dc; }
+        .priority-critical { background:#fde9ea; color:#be3737; border-color:#f2d2d4; }
+        .priority-neutral { background:#edf4ff; color:#46617d; }
         .risk-item { border-bottom:1px solid #edf3fb; padding:10px 0; }
+        .risk-card { border:1px solid #d9e4f2; border-radius:14px; padding:12px; margin-bottom:10px; background:#fff; }
         .risk-head { display:flex; justify-content:space-between; gap:8px; }
         .risk-title { font-weight:700; color:#1a344f; }
         .risk-trend { color:#7a90a8; font-size:.78rem; }
-        .road-band { background:#fff; border:1px solid #d7e4f2; border-radius:12px; padding:10px; margin-bottom:8px; }
-        .road-band-segment { display:inline-block; margin:4px 5px 0 0; padding:3px 8px; border-radius:999px; border:1px solid #d5e2f0; font-size:.72rem; color:#617994; }
-        .road-band-segment.active { background:#2f6fed; color:#fff; border-color:#2f6fed; }
-        .road-marker { width:10px; height:10px; border-radius:50%; background:#2f6fed; margin-top:7px; }
-        .road-marker-label { font-size:.76rem; color:#6a8199; margin-top:4px; }
+        .risk-meta-row { display:flex; justify-content:space-between; gap:10px; margin-top:10px; }
+        .risk-meta { margin-top:6px; }
+        .risk-trend-worse { color:#df3c3c; font-weight:700; }
+        .risk-trend-watch { color:#b98318; font-weight:700; }
+        .risk-trend-stable { color:#768a9f; font-weight:700; }
+        .roadmap-shell { background:#fff; border:1px solid #d7e4f2; border-radius:16px; padding:12px; }
+        .road-quarter-row { display:flex; gap:14px; margin-bottom:10px; }
+        .road-quarter { color:#8b9db1; font-size:.95rem; font-weight:600; }
+        .road-quarter.active { color:#264fbe; font-weight:800; }
+        .road-band { padding:10px 0; margin-bottom:10px; }
+        .road-band-title { font-weight:800; color:#1a344f; margin-bottom:7px; font-size:1.02rem; }
+        .road-band-track { position:relative; display:grid; grid-template-columns:repeat(5,1fr); border-radius:999px; overflow:hidden; }
+        .road-band-segment { display:block; padding:11px 0; text-align:center; font-weight:700; font-size:1rem; color:#3d5782; background:#d6dde8; }
+        .road-band-segment:nth-child(1) { background:#aebbe8; color:#3754ce; }
+        .road-band-segment:nth-child(2) { background:#c0b1e4; color:#6942cc; }
+        .road-band-segment:nth-child(3) { background:#3050b5; color:#fff; }
+        .road-band-segment:nth-child(4) { background:#abd9ba; color:#1a854f; }
+        .road-band-segment:nth-child(5) { background:#d3dae6; color:#7d90a9; }
+        .road-band-segment.active { box-shadow: inset 0 0 0 3px rgba(255,255,255,.35); }
+        .road-marker { position:absolute; top:-8px; transform:translateX(-50%); width:14px; height:52px; border-radius:4px; background:#2f6fed; }
+        .road-marker-label { font-size:1rem; color:#1f4eca; margin-top:6px; font-weight:700; text-align:center; }
+        .road-progress { margin-top:4px; font-size:.85rem; }
         .decision-shell { display:grid; grid-template-columns:repeat(3,minmax(220px,1fr)); gap:10px; }
         .decision-card { background:#fff; border:1px solid #d7e4f2; border-radius:12px; padding:12px; }
         .update-pill,.status-pill { border-radius:999px; padding:3px 8px; border:1px solid #d4e2f0; font-size:.72rem; }

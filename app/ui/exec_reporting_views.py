@@ -81,33 +81,57 @@ def render_dashboard_program_grid(df: pd.DataFrame) -> str:
 
 
 def render_dashboard_milestones(df: pd.DataFrame) -> str:
+    priority_classes = {
+        "high": "priority-high",
+        "medium": "priority-medium",
+        "low": "priority-low",
+        "critical": "priority-critical",
+    }
     parts: list[str] = []
     for row in df.head(6).to_dict("records"):
         dt = pd.to_datetime(row.get("Milestone Date"), errors="coerce")
         day = dt.strftime("%d") if pd.notna(dt) else "--"
         mon = dt.strftime("%b") if pd.notna(dt) else "TBD"
+        priority = str(row.get("Priority") or "Medium")
+        priority_class = priority_classes.get(priority.strip().lower(), "priority-neutral")
         parts.append(
             "<div class='milestone-item'>"
             f"<div class='milestone-datebox'><div class='milestone-day'>{day}</div><div class='milestone-month'>{mon}</div></div>"
             "<div>"
             f"<div class='dash-card-heading'>{escape(str(row.get('Program') or ''))}</div>"
             f"<div class='copy'>{escape(str(row.get('Milestone') or ''))}</div>"
-            f"<span class='priority-badge'>{escape(str(row.get('Priority') or 'Medium'))}</span>"
+            f"<span class='priority-badge {priority_class}'>{escape(priority)}</span>"
             "</div></div>"
         )
     return "<div class='dash-card'>" + "".join(parts) + "</div>"
 
 
+def risk_trend(value: str | None, escalations: int) -> tuple[str, str]:
+    text = (value or "").strip().lower()
+    if text in {"red", "critical", "off track", "delayed", "at risk"} or escalations >= 1:
+        return "↑ Worse", "risk-trend-worse"
+    if text in {"amber", "yellow"}:
+        return "↗ Watch", "risk-trend-watch"
+    return "→ Stable", "risk-trend-stable"
+
+
 def render_dashboard_risks(df: pd.DataFrame) -> str:
     parts: list[str] = []
     for row in df.sort_values(by=["Escalations", "Open Risks"], ascending=False).head(6).to_dict("records"):
+        escalations = int(row.get("Escalations") or 0)
+        trend_label, trend_class = risk_trend(row.get("Status"), escalations)
+        severity = str(row.get("Priority") or row.get("Status") or "Medium")
         parts.append(
-            "<div class='risk-item'>"
+            "<div class='risk-item risk-card'>"
             "<div class='risk-head'>"
-            f"<div class='risk-title'>{escape(str(row.get('Program') or ''))}</div>"
-            f"<div class='risk-trend'>Escalations: {escape(str(row.get('Escalations') or 0))}</div>"
+            f"<div class='risk-title'>{escape(str(row.get('Risk Detail') or 'Risk exposure update pending.'))}</div>"
+            f"<div class='risk-trend {trend_class}'>{escape(trend_label)}</div>"
             "</div>"
-            f"<div class='copy'>{escape(str(row.get('Risk Detail') or 'No material risk logged.'))}</div>"
+            "<div class='risk-meta-row'>"
+            f"<div class='copy'>{escape(str(row.get('Program') or ''))}</div>"
+            f"<div class='copy'><strong>Severity:</strong> {escape(severity.title())}</div>"
+            "</div>"
+            f"<div class='copy risk-meta'><strong>Escalations:</strong> {escape(str(escalations))}</div>"
             "</div>"
         )
     return "<div class='dash-card'>" + "".join(parts) + "</div>"
@@ -139,17 +163,29 @@ def roadmap_stage_segments(stage: str | None) -> list[str]:
 
 
 def render_dashboard_roadmap(df: pd.DataFrame) -> str:
+    if df.empty:
+        return "<div class='roadmap-shell'><div class='copy'>No roadmap data available.</div></div>"
+    active_q = "Q3 FY25"
     bands: list[str] = []
-    for row in df.head(7).to_dict("records"):
+    for row in df.head(5).to_dict("records"):
         marker = escape(str(row.get("Milestone") or "Current Milestone"))
+        progress = max(4, min(96, int(row.get("Progress") or 0)))
         bands.append(
             "<div class='road-band'>"
             f"<div class='road-band-title'>{escape(str(row.get('Program') or ''))}</div>"
-            f"<div>{''.join(roadmap_stage_segments(row.get('Stage')))}</div>"
-            f"<div class='road-marker'></div><div class='road-marker-label'>{marker}</div>"
+            "<div class='road-band-track'>"
+            f"{''.join(roadmap_stage_segments(row.get('Stage')))}"
+            f"<div class='road-marker' style='left:{progress}%'></div>"
+            "</div>"
+            f"<div class='road-marker-label'>{marker}</div>"
+            f"<div class='copy road-progress'>{escape(str(progress))}% complete</div>"
             "</div>"
         )
-    return "".join(bands)
+    quarter_tabs = "".join(
+        f"<span class='road-quarter{' active' if q == active_q else ''}'>{q}</span>"
+        for q in ["Q1 FY25", "Q2 FY25", "Q3 FY25", "Q4 FY25", "Q1 FY26"]
+    )
+    return "<div class='roadmap-shell'><div class='road-quarter-row'>" + quarter_tabs + "</div>" + "".join(bands) + "</div>"
 
 
 def cycle_label(reporting_date: date) -> str:
@@ -273,9 +309,18 @@ def one_pager_workstreams(row: pd.Series) -> str:
 
 
 def one_pager_milestones(row: pd.Series) -> str:
-    names = ["Kickoff", "Design", "Build", "Test", "Launch", "Value"]
-    nodes = "".join(f"<div class='timeline-node'><span>{escape(name)}</span></div>" for name in names)
-    return f"<div class='card'><div class='heading'>Milestone Timeline</div><div class='timeline-line'>{nodes}</div></div>"
+    progress = max(4, min(96, int(row.get("Progress") or 0)))
+    marker = escape(str(row.get("Milestone") or "Current milestone"))
+    return (
+        "<div class='card'>"
+        "<div class='heading'>Milestone Timeline</div>"
+        "<div class='road-band-track'>"
+        f"{''.join(roadmap_stage_segments(row.get('Stage')))}"
+        f"<div class='road-marker' style='left:{progress}%'></div>"
+        "</div>"
+        f"<div class='road-marker-label'>{marker}</div>"
+        "</div>"
+    )
 
 
 def render_program_one_pager(*, portfolio: str, program: str, df: pd.DataFrame, reporting_date: date) -> None:
@@ -297,10 +342,16 @@ def render_program_one_pager(*, portfolio: str, program: str, df: pd.DataFrame, 
       .grid-2 {{display:grid;grid-template-columns:1fr 1fr;gap:14px;}}
       .card {{background:white;border:1px solid #d6e3f1;border-radius:14px;padding:14px;}}
       .heading {{font-weight:700;color:#19324d;margin-bottom:8px;}}
-      .timeline-line {{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;position:relative;padding-top:10px;}}
-      .timeline-line:before {{content:'';position:absolute;left:0;right:0;top:18px;height:2px;background:#cbd9e8;}}
-      .timeline-node {{position:relative;text-align:center;font-size:.78rem;color:#556f89;}}
-      .timeline-node:before {{content:'';width:12px;height:12px;border-radius:50%;background:#2f6fed;border:3px solid #e6eef9;position:relative;display:block;margin:0 auto 8px;}}
+      .road-band-track {{ position:relative; display:grid; grid-template-columns:repeat(5,1fr); border-radius:999px; overflow:hidden; margin-top:2px; }}
+      .road-band-segment {{ display:block; padding:12px 0; text-align:center; font-weight:700; color:#3d5782; background:#d6dde8; }}
+      .road-band-segment:nth-child(1) {{ background:#aebbe8; color:#3754ce; }}
+      .road-band-segment:nth-child(2) {{ background:#c0b1e4; color:#6942cc; }}
+      .road-band-segment:nth-child(3) {{ background:#3050b5; color:#fff; }}
+      .road-band-segment:nth-child(4) {{ background:#abd9ba; color:#1a854f; }}
+      .road-band-segment:nth-child(5) {{ background:#d3dae6; color:#7d90a9; }}
+      .road-band-segment.active {{ box-shadow: inset 0 0 0 3px rgba(255,255,255,.35); }}
+      .road-marker {{ position:absolute; top:-8px; transform:translateX(-50%); width:14px; height:52px; border-radius:4px; background:#2f6fed; }}
+      .road-marker-label {{ font-size:1rem; color:#1f4eca; margin-top:8px; font-weight:700; text-align:center; }}
       .decision-card {{background:#f8fbff;border:1px solid #d9e7f6;border-radius:12px;padding:10px;}}
       .risk-matrix {{width:100%;border-collapse:collapse;font-size:.82rem;}} .risk-matrix th,.risk-matrix td {{padding:6px;border-bottom:1px solid #edf3fb;text-align:left;}}
       .ws-card {{margin-bottom:8px;}} .ws-row {{font-size:.85rem;font-weight:600;margin-bottom:5px;}} .ws-dot {{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}}
