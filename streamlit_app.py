@@ -166,7 +166,7 @@ def main() -> None:
 
     render_shell(_ctx=ctx)
     pages = build_pages(ctx)
-    selected_page = st.navigation(pages)
+    selected_page = st.navigation(pages, position="top")
     selected_page.run()
 
 

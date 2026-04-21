@@ -7,7 +7,7 @@ import streamlit as st
 from app.repositories.portfolios import get_portfolio_by_program
 from app.repositories.programs import list_programs
 
-PROGRAM_PAGE_PATH = "app/ui/pages/program.py"
+PROGRAM_PAGE_PATH = "program"
 
 
 def open_program(program_id: str) -> None:
@@ -15,7 +15,8 @@ def open_program(program_id: str) -> None:
     try:
         st.switch_page(PROGRAM_PAGE_PATH)
     except Exception:
-        pass
+        st.query_params["page"] = PROGRAM_PAGE_PATH
+        st.rerun()
 
 
 def ensure_sidebar_state(current_page: str = "Impower Portfolio") -> dict:
