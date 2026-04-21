@@ -241,7 +241,12 @@ def render_dashboard(
         render_html(render_dashboard_roadmap(df))
     with right:
         render_html("<div class='panel-header'><div class='heading'>Upcoming Milestones</div></div>")
-        upcoming = df[df["Milestone Date"].notna()].sort_values(by=["Milestone Date"]).head(6)
+        upcoming = df[df["Milestone Date"].notna()].copy()
+        priority_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        upcoming["_priority_rank"] = (
+            upcoming["Priority"].astype(str).str.strip().str.lower().map(priority_order).fillna(1).astype(int)
+        )
+        upcoming = upcoming.sort_values(by=["Milestone Date", "_priority_rank"]).head(6)
         render_html(render_dashboard_milestones(upcoming))
         render_html("<div class='panel-header'><div class='heading'>Key Risks Across Portfolio</div></div>")
         render_html(render_dashboard_risks(df))

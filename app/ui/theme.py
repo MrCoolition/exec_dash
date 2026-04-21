@@ -33,10 +33,10 @@ def inject_theme_overrides() -> None:
         .milestone-item { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:10px 0; border-bottom:1px solid #edf3fb; }
         .milestone-datebox { min-width:52px; border:1px solid #d6e3f2; border-radius:10px; background:#f5f9ff; text-align:center; padding:6px; }
         .priority-badge { display:inline-block; margin-top:6px; border:1px solid #d2e0ef; border-radius:999px; padding:4px 11px; font-size:.72rem; font-weight:700; }
-        .priority-high { background:#dff0e8; color:#1f8a57; border-color:#d0e8dc; }
-        .priority-medium { background:#f4ecdd; color:#bd8517; border-color:#eadfc8; }
-        .priority-low { background:#f4e4e8; color:#ca4c52; border-color:#ead7dc; }
-        .priority-critical { background:#fde9ea; color:#be3737; border-color:#f2d2d4; }
+        .priority-low { background:#eaf8f0; color:#23714e; border-color:#d7ebdf; }
+        .priority-medium { background:#fff8e8; color:#946e16; border-color:#f1e3bf; }
+        .priority-high { background:#fff0f0; color:#b94747; border-color:#f3d4d4; }
+        .priority-critical { background:#fde9ea; color:#9f2229; border-color:#efc8cb; }
         .priority-neutral { background:#edf4ff; color:#46617d; }
         .risk-item { border-bottom:1px solid #edf3fb; padding:10px 0; }
         .risk-card { border:1px solid #d9e4f2; border-radius:14px; padding:12px; margin-bottom:10px; background:#fff; }
