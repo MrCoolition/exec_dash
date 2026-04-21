@@ -136,6 +136,14 @@ def render_clean_login_screen(validation: AuthValidationResult) -> None:
     st.caption("Use your company account.")
 
 
+def render_shell(_ctx: object) -> None:
+    """Compatibility no-op for legacy tests/hooks.
+
+    The application now uses Streamlit native navigation and does not render
+    an additional shell header.
+    """
+
+
 def main() -> None:
     validation = validate_canonical_auth_config()
     if not validation.is_valid:
@@ -156,8 +164,9 @@ def main() -> None:
         if st.button("Logout"):
             _logout()
 
+    render_shell(_ctx=ctx)
     pages = build_pages(ctx)
-    selected_page = st.navigation(pages, position="top")
+    selected_page = st.navigation(pages)
     selected_page.run()
 
 
