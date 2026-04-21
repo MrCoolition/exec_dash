@@ -36,7 +36,7 @@ def inject_theme_overrides() -> None:
         .priority-low { background:#eaf8f0; color:#23714e; border-color:#d7ebdf; }
         .priority-medium { background:#fff8e8; color:#946e16; border-color:#f1e3bf; }
         .priority-high { background:#fff0f0; color:#b94747; border-color:#f3d4d4; }
-        .priority-critical { background:#fde9ea; color:#9f2229; border-color:#efc8cb; }
+        .priority-critical { background:#111111; color:#ffffff; border-color:#111111; }
         .priority-neutral { background:#edf4ff; color:#46617d; }
         .risk-item { border-bottom:1px solid #edf3fb; padding:10px 0; }
         .risk-card { border:1px solid #d9e4f2; border-radius:14px; padding:12px; margin-bottom:10px; background:#fff; }
