@@ -8,10 +8,6 @@ from app.repositories.portfolios import get_portfolio_by_program
 from app.repositories.programs import list_programs
 
 PROGRAM_PAGE_PATH = "app/ui/pages/program.py"
-PORTFOLIO_PAGE_PATH = "app/ui/pages/portfolio.py"
-UPDATES_PAGE_PATH = "app/ui/pages/update_center.py"
-SETTINGS_PAGE_PATH = "app/ui/pages/settings.py"
-HELP_PAGE_PATH = "app/ui/pages/help.py"
 
 
 def open_program(program_id: str) -> None:
@@ -20,15 +16,6 @@ def open_program(program_id: str) -> None:
         st.switch_page(PROGRAM_PAGE_PATH)
     except Exception:
         pass
-
-
-def _nav_button(label: str, path: str, current_page: str) -> None:
-    is_active = label == current_page
-    if st.button(label, use_container_width=True, type="primary" if is_active else "secondary") and not is_active:
-        try:
-            st.switch_page(path)
-        except Exception:
-            pass
 
 
 def ensure_sidebar_state(current_page: str = "Impower Portfolio") -> dict:
@@ -55,12 +42,6 @@ def ensure_sidebar_state(current_page: str = "Impower Portfolio") -> dict:
     portfolio = get_portfolio_by_program(str(selected_program["id"]))
 
     with st.sidebar:
-        st.markdown("#### Navigation")
-        _nav_button("Impower Portfolio", PORTFOLIO_PAGE_PATH, current_page)
-        _nav_button("Program One-Pager", PROGRAM_PAGE_PATH, current_page)
-        _nav_button("Weekly Updates", UPDATES_PAGE_PATH, current_page)
-        _nav_button("Settings", SETTINGS_PAGE_PATH, current_page)
-        _nav_button("Help & Support", HELP_PAGE_PATH, current_page)
         st.markdown("### Context")
         st.caption(
             f"Selected portfolio: {(portfolio or {}).get('name', 'Unknown')}. "

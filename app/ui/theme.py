@@ -13,7 +13,7 @@ def inject_theme_overrides() -> None:
             linear-gradient(180deg, #f2f7fd 0%, #eef4fb 100%);
           color: #3a526c;
         }
-        .block-container { max-width: 1520px; padding-top: 1rem; }
+        .block-container { max-width: 1520px; padding-top: 2.75rem; }
         [data-testid="stSidebar"] { background: linear-gradient(180deg, #ebf2fb 0%, #e1ecf8 100%); border-right: 1px solid #cfdded; }
         .topbar { display:grid; grid-template-columns:2.1fr 2.3fr auto auto; gap:12px; align-items:center; background:#fff; border:1px solid #d7e4f2; border-radius:16px; padding:14px; margin-bottom:12px; }
         .dashboard-title { font-size: 2rem; font-weight: 800; color: #16314d; line-height: 1.15; }
