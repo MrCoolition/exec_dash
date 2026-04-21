@@ -368,16 +368,16 @@ def render_program_one_pager(*, portfolio: str, program: str, df: pd.DataFrame, 
       .grid-2 {{display:grid;grid-template-columns:1fr 1fr;gap:14px;}}
       .card {{background:white;border:1px solid #d6e3f1;border-radius:14px;padding:14px;}}
       .heading {{font-weight:700;color:#19324d;margin-bottom:8px;}}
-      .road-band-track {{ position:relative; display:grid; grid-template-columns:repeat(5,1fr); border-radius:999px; overflow:hidden; margin-top:2px; }}
-      .road-band-segment {{ display:block; padding:12px 0; text-align:center; font-weight:700; color:#3d5782; background:#d6dde8; }}
-      .road-band-segment:nth-child(1) {{ background:#aebbe8; color:#3754ce; }}
-      .road-band-segment:nth-child(2) {{ background:#c0b1e4; color:#6942cc; }}
-      .road-band-segment:nth-child(3) {{ background:#3050b5; color:#fff; }}
-      .road-band-segment:nth-child(4) {{ background:#abd9ba; color:#1a854f; }}
-      .road-band-segment:nth-child(5) {{ background:#d3dae6; color:#7d90a9; }}
-      .road-band-segment.active {{ box-shadow: inset 0 0 0 3px rgba(255,255,255,.35); }}
-      .road-marker {{ position:absolute; top:-8px; transform:translateX(-50%); width:14px; height:52px; border-radius:4px; background:#2f6fed; }}
-      .road-marker-label {{ font-size:1rem; color:#1f4eca; margin-top:8px; font-weight:700; text-align:center; }}
+      .road-band-track {{ position:relative; display:grid; grid-template-columns:repeat(5,1fr); border-radius:999px; overflow:hidden; margin-top:2px; border:1px solid #ccd7e7; }}
+      .road-band-segment {{ display:block; padding:12px 0 11px; text-align:center; font-weight:800; color:#3d5782; background:#d6dde8; }}
+      .road-band-segment:nth-child(1) {{ background:#9eacd6; color:#3150c4; }}
+      .road-band-segment:nth-child(2) {{ background:#aba0ce; color:#5b49cd; }}
+      .road-band-segment:nth-child(3) {{ background:#3553b2; color:#fff; }}
+      .road-band-segment:nth-child(4) {{ background:#9bc9aa; color:#177f4c; }}
+      .road-band-segment:nth-child(5) {{ background:#bcc5d1; color:#6f84a4; }}
+      .road-band-segment.active {{ box-shadow: inset 0 0 0 3px rgba(255,255,255,.32); }}
+      .road-marker {{ position:absolute; top:-2px; transform:translateX(-50%); width:16px; height:50px; border-radius:7px; background:#2f6fed; box-shadow:0 0 0 2px rgba(255,255,255,.3); }}
+      .road-marker-label {{ font-size:1.05rem; color:#1f4eca; margin-top:8px; font-weight:800; text-align:center; }}
       .decision-card {{background:#f8fbff;border:1px solid #d9e7f6;border-radius:12px;padding:10px;}}
       .risk-matrix {{width:100%;border-collapse:collapse;font-size:.82rem;}} .risk-matrix th,.risk-matrix td {{padding:6px;border-bottom:1px solid #edf3fb;text-align:left;}}
       .ws-card {{margin-bottom:8px;}} .ws-row {{font-size:.85rem;font-weight:600;margin-bottom:5px;}} .ws-dot {{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}}

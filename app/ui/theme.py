@@ -52,18 +52,18 @@ def inject_theme_overrides() -> None:
         .road-quarter-row { display:flex; gap:14px; margin-bottom:10px; }
         .road-quarter { color:#8b9db1; font-size:.95rem; font-weight:600; }
         .road-quarter.active { color:#264fbe; font-weight:800; }
-        .road-band { padding:10px 0; margin-bottom:10px; }
-        .road-band-title { font-weight:800; color:#1a344f; margin-bottom:7px; font-size:1.02rem; }
-        .road-band-track { position:relative; display:grid; grid-template-columns:repeat(5,1fr); border-radius:999px; overflow:hidden; }
-        .road-band-segment { display:block; padding:11px 0; text-align:center; font-weight:700; font-size:1rem; color:#3d5782; background:#d6dde8; }
-        .road-band-segment:nth-child(1) { background:#aebbe8; color:#3754ce; }
-        .road-band-segment:nth-child(2) { background:#c0b1e4; color:#6942cc; }
-        .road-band-segment:nth-child(3) { background:#3050b5; color:#fff; }
-        .road-band-segment:nth-child(4) { background:#abd9ba; color:#1a854f; }
-        .road-band-segment:nth-child(5) { background:#d3dae6; color:#7d90a9; }
-        .road-band-segment.active { box-shadow: inset 0 0 0 3px rgba(255,255,255,.35); }
-        .road-marker { position:absolute; top:-8px; transform:translateX(-50%); width:14px; height:52px; border-radius:4px; background:#2f6fed; }
-        .road-marker-label { font-size:1rem; color:#1f4eca; margin-top:6px; font-weight:700; text-align:center; }
+        .road-band { padding:10px 0 6px; margin-bottom:10px; }
+        .road-band-title { font-weight:800; color:#1a344f; margin-bottom:8px; font-size:1.02rem; }
+        .road-band-track { position:relative; display:grid; grid-template-columns:repeat(5,1fr); border-radius:999px; overflow:hidden; border:1px solid #ccd7e7; }
+        .road-band-segment { display:block; padding:12px 0 11px; text-align:center; font-weight:800; font-size:1.02rem; color:#3d5782; background:#d6dde8; }
+        .road-band-segment:nth-child(1) { background:#9eacd6; color:#3150c4; }
+        .road-band-segment:nth-child(2) { background:#aba0ce; color:#5b49cd; }
+        .road-band-segment:nth-child(3) { background:#3553b2; color:#ffffff; }
+        .road-band-segment:nth-child(4) { background:#9bc9aa; color:#177f4c; }
+        .road-band-segment:nth-child(5) { background:#bcc5d1; color:#6f84a4; }
+        .road-band-segment.active { box-shadow: inset 0 0 0 3px rgba(255,255,255,.32); }
+        .road-marker { position:absolute; top:-2px; transform:translateX(-50%); width:16px; height:50px; border-radius:7px; background:#2f6fed; box-shadow:0 0 0 2px rgba(255,255,255,.3); }
+        .road-marker-label { font-size:1.05rem; color:#1f4eca; margin-top:8px; font-weight:800; text-align:center; }
         .road-progress { margin-top:4px; font-size:.85rem; }
         .decision-shell { display:grid; grid-template-columns:repeat(3,minmax(220px,1fr)); gap:10px; }
         .decision-card { background:#fff; border:1px solid #d7e4f2; border-radius:12px; padding:12px; }
