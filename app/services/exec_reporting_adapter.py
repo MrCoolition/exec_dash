@@ -3,36 +3,44 @@ from __future__ import annotations
 import pandas as pd
 
 
+def _first(row: dict, *keys: str, default=None):
+    for key in keys:
+        if key in row and row.get(key) not in (None, ""):
+            return row.get(key)
+    return default
+
+
 def build_exec_dataframe(programs: list[dict]) -> pd.DataFrame:
     rows = []
     for p in programs:
         rows.append(
             {
-                "Program": p.get("name") or "—",
-                "Executive Sponsor": p.get("sponsor_name") or "—",
-                "Lead": p.get("owner_name") or "—",
-                "Stage": p.get("current_phase") or "Discovery",
-                "Status": p.get("current_status") or "On Track",
-                "Priority": p.get("priority") or "Medium",
-                "Start": p.get("planned_start_date"),
-                "End": p.get("planned_end_date"),
-                "Progress": int(p.get("percent_complete") or 0),
-                "Milestone": p.get("next_milestone_name") or "—",
-                "Milestone Date": p.get("next_milestone_date"),
-                "Delivery Health": p.get("delivery_health") or "Green",
-                "Tech Health": p.get("tech_health") or "Green",
-                "Team Health": p.get("team_health") or "Green",
-                "Open Risks": int(p.get("open_risks_count") or 0),
-                "Escalations": int(p.get("escalations_count") or 0),
-                "Summary": p.get("summary") or "No summary available.",
-                "Upcoming Work": p.get("upcoming_work") or "No upcoming work logged.",
-                "Risk Detail": p.get("risk_detail") or "No material risk logged.",
-                "Decision Needed": p.get("decision_needed") or "No executive decision required this cycle.",
-                "Mitigation": p.get("mitigation") or "No mitigation required.",
-                "Status Note": p.get("status_note") or p.get("summary") or "No status note.",
-                "Next Step": p.get("next_step") or p.get("upcoming_work") or "No next step logged.",
-                "program_id": str(p.get("id")),
-                "portfolio_id": str(p.get("portfolio_id")),
+                "Program": _first(p, "program_name", "name", default="—"),
+                "Executive Sponsor": _first(p, "executive_sponsor", "sponsor_name", default="—"),
+                "Lead": _first(p, "program_lead", "owner_name", default="—"),
+                "Stage": _first(p, "current_phase", default="Discovery"),
+                "Status": _first(p, "current_status", default="On Track"),
+                "Priority": _first(p, "priority", default="Medium"),
+                "Start": _first(p, "planned_start_date"),
+                "End": _first(p, "planned_end_date"),
+                "Progress": int(_first(p, "percent_complete", default=0) or 0),
+                "Milestone": _first(p, "current_milestone_name", "next_milestone_name", default="—"),
+                "Milestone Date": _first(p, "current_milestone_date", "next_milestone_date"),
+                "Delivery Health": _first(p, "delivery_health", default="Green"),
+                "Tech Health": _first(p, "tech_health", default="Green"),
+                "Team Health": _first(p, "team_health", default="Green"),
+                "Open Risks": int(_first(p, "open_risks_count", default=0) or 0),
+                "Escalations": int(_first(p, "escalations_count", default=0) or 0),
+                "Summary": _first(p, "summary", default="No summary available."),
+                "Upcoming Work": _first(p, "upcoming_work", default="No upcoming work logged."),
+                "Risk Detail": _first(p, "risk_detail", default="No material risk logged."),
+                "Decision Needed": _first(p, "decision_needed", default="No executive decision required this cycle."),
+                "Mitigation": _first(p, "mitigation", default="No mitigation required."),
+                "Status Note": _first(p, "status_note", "summary", default="No status note."),
+                "Next Step": _first(p, "next_step", "upcoming_work", default="No next step logged."),
+                "program_id": str(_first(p, "program_id", "id", default="")),
+                "portfolio_id": str(_first(p, "portfolio_id", default="")),
+                "portfolio_name": _first(p, "portfolio_name", default=""),
             }
         )
     df = pd.DataFrame(rows)
