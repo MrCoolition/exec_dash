@@ -8,10 +8,11 @@ from app.repositories.portfolios import get_portfolio_by_program
 from app.repositories.programs import list_programs
 
 PROGRAM_PAGE_PATH = "program"
+PENDING_PROGRAM_KEY = "_pending_selected_program_id"
 
 
 def open_program(program_id: str) -> None:
-    st.session_state.selected_program_id = program_id
+    st.session_state[PENDING_PROGRAM_KEY] = str(program_id)
     try:
         st.switch_page(PROGRAM_PAGE_PATH)
     except Exception:
@@ -24,7 +25,10 @@ def ensure_sidebar_state(current_page: str = "Impower Portfolio") -> dict:
     if not programs:
         return {"programs": [], "selected_program": None, "selected_program_id": None, "reporting_date": dt.date.today()}
 
-    if "selected_program_id" not in st.session_state:
+    pending_program_id = st.session_state.pop(PENDING_PROGRAM_KEY, None)
+    if pending_program_id is not None:
+        st.session_state.selected_program_id = str(pending_program_id)
+    elif "selected_program_id" not in st.session_state:
         st.session_state.selected_program_id = str(programs[0]["id"])
     if "reporting_date" not in st.session_state:
         st.session_state.reporting_date = dt.date.today()
