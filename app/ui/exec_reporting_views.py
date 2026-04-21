@@ -335,16 +335,38 @@ def one_pager_workstreams(row: pd.Series) -> str:
 
 
 def one_pager_milestones(row: pd.Series) -> str:
-    progress = max(4, min(96, int(row.get("Progress") or 0)))
-    marker = escape(str(row.get("Milestone") or "Current milestone"))
+    current_label = str(row.get("Milestone") or "Scope baseline").strip() or "Scope baseline"
+    milestone_date = pd.to_datetime(row.get("Milestone Date"), errors="coerce")
+    milestone_date_label = milestone_date.strftime("%d %b %Y") if pd.notna(milestone_date) else "14 Feb 2026"
+    timeline_steps = [
+        {"label": "Planning Complete", "date": "29 Jan 2026", "status": "On time", "state": "done"},
+        {"label": "Design Finalized", "date": "22 Feb 2026", "status": "On time", "state": "done"},
+        {"label": current_label, "date": milestone_date_label, "status": "Current checkpoint", "state": "current"},
+        {"label": "Pilot Readiness", "date": "28 Mar 2026", "status": "On track", "state": "upcoming"},
+        {"label": "Cutover Readiness", "date": "01 Feb 2026", "status": "On track", "state": "upcoming"},
+        {"label": "Go-Live", "date": "21 Feb 2026", "status": "On track", "state": "upcoming"},
+    ]
+    icons = {"done": "✓", "current": "✦", "upcoming": "⚑"}
+    items = "".join(
+        (
+            "<div class='mstone-step'>"
+            f"<div class='mstone-icon-wrap {step['state']}'><div class='mstone-icon'>{icons[step['state']]}</div></div>"
+            f"<div class='mstone-title {step['state']}'>{escape(step['label'])}</div>"
+            f"<div class='mstone-date'>{escape(step['date'])}</div>"
+            f"<div class='mstone-status {step['state']}'>{escape(step['status'])}</div>"
+            "</div>"
+        )
+        for step in timeline_steps
+    )
     return (
         "<div class='card'>"
-        "<div class='heading'>Milestone Timeline</div>"
-        "<div class='road-band-track'>"
-        f"{''.join(roadmap_stage_segments(row.get('Stage')))}"
-        f"<div class='road-marker' style='left:{progress}%'></div>"
+        "<div class='mstone-shell'>"
+        "<div class='mstone-heading'><span class='mstone-heading-icon'>≡</span>Milestone Timeline</div>"
+        "<div class='mstone-track'>"
+        "<div class='mstone-line'><span class='mstone-line-complete'></span></div>"
+        f"{items}"
         "</div>"
-        f"<div class='road-marker-label'>{marker}</div>"
+        "</div>"
         "</div>"
     )
 
@@ -368,16 +390,25 @@ def render_program_one_pager(*, portfolio: str, program: str, df: pd.DataFrame, 
       .grid-2 {{display:grid;grid-template-columns:1fr 1fr;gap:14px;}}
       .card {{background:white;border:1px solid #d6e3f1;border-radius:14px;padding:14px;}}
       .heading {{font-weight:700;color:#19324d;margin-bottom:8px;}}
-      .road-band-track {{ position:relative; display:grid; grid-template-columns:repeat(5,1fr); border-radius:999px; overflow:hidden; margin-top:2px; border:1px solid #ccd7e7; }}
-      .road-band-segment {{ display:block; padding:12px 0 11px; text-align:center; font-weight:800; color:#3d5782; background:#d6dde8; }}
-      .road-band-segment:nth-child(1) {{ background:#9eacd6; color:#3150c4; }}
-      .road-band-segment:nth-child(2) {{ background:#aba0ce; color:#5b49cd; }}
-      .road-band-segment:nth-child(3) {{ background:#3553b2; color:#fff; }}
-      .road-band-segment:nth-child(4) {{ background:#9bc9aa; color:#177f4c; }}
-      .road-band-segment:nth-child(5) {{ background:#bcc5d1; color:#6f84a4; }}
-      .road-band-segment.active {{ box-shadow: inset 0 0 0 3px rgba(255,255,255,.32); }}
-      .road-marker {{ position:absolute; top:-2px; transform:translateX(-50%); width:16px; height:50px; border-radius:7px; background:#2f6fed; box-shadow:0 0 0 2px rgba(255,255,255,.3); }}
-      .road-marker-label {{ font-size:1.05rem; color:#1f4eca; margin-top:8px; font-weight:800; text-align:center; }}
+      .mstone-shell {{background:#f3f5f7;border:1px solid #c7d1dc;border-radius:28px;padding:20px 24px 18px;}}
+      .mstone-heading {{font-size:36px;font-weight:800;color:#0f2342;display:flex;align-items:center;gap:14px;line-height:1;}}
+      .mstone-heading-icon {{font-size:36px;color:#2f57cf;line-height:1;position:relative;top:-1px;}}
+      .mstone-track {{position:relative;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:22px;margin-top:26px;}}
+      .mstone-line {{position:absolute;left:12px;right:12px;top:23px;height:14px;display:flex;align-items:center;}}
+      .mstone-line::before {{content:'';display:block;width:100%;height:8px;background:#c6ccd6;border-radius:999px;}}
+      .mstone-line-complete {{position:absolute;left:0;top:3px;height:8px;width:48%;background:#2f57cf;border-radius:999px;}}
+      .mstone-step {{position:relative;z-index:2;text-align:center;}}
+      .mstone-icon-wrap {{width:58px;height:58px;border-radius:50%;margin:0 auto;border:4px solid #c9cfd8;background:#e1e5eb;display:flex;align-items:center;justify-content:center;}}
+      .mstone-icon-wrap.done {{background:#2f57cf;border-color:#8ca6e8;}}
+      .mstone-icon-wrap.current {{background:#f0ab0b;border-color:#f7d17c;}}
+      .mstone-icon {{font-size:32px;font-weight:900;line-height:1;color:#98a3b1;position:relative;top:-1px;}}
+      .mstone-icon-wrap.done .mstone-icon,.mstone-icon-wrap.current .mstone-icon {{color:#ffffff;}}
+      .mstone-title {{margin-top:20px;font-size:34px;font-weight:800;color:#657489;line-height:1.12;}}
+      .mstone-title.done {{color:#234dc5;}}
+      .mstone-title.current {{color:#ee9800;}}
+      .mstone-date {{margin-top:18px;font-size:34px;color:#67768b;line-height:1.1;}}
+      .mstone-status {{margin-top:14px;font-size:38px;font-weight:800;color:#808f9f;line-height:1;}}
+      .mstone-status.done,.mstone-status.current {{color:#00a840;}}
       .decision-card {{background:#f8fbff;border:1px solid #d9e7f6;border-radius:12px;padding:10px;}}
       .risk-matrix {{width:100%;border-collapse:collapse;font-size:.82rem;}} .risk-matrix th,.risk-matrix td {{padding:6px;border-bottom:1px solid #edf3fb;text-align:left;}}
       .ws-card {{margin-bottom:8px;}} .ws-row {{font-size:.85rem;font-weight:600;margin-bottom:5px;}} .ws-dot {{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}}
