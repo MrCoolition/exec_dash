@@ -102,7 +102,7 @@ def _readiness(payload: dict) -> list[str]:
 
 
 def render(ctx: UserContext) -> None:
-    state = ensure_sidebar_state()
+    state = ensure_sidebar_state(current_page="Weekly Updates")
     program_id = state["selected_program_id"]
     program = get_program(program_id) or {}
     week_ending = state["reporting_date"]

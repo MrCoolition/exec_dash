@@ -3,64 +3,57 @@ from __future__ import annotations
 import streamlit as st
 
 
-COLORS = {
-    "navy": "#2a4561",
-    "blue": "#2f6fed",
-    "blue_soft": "#7ea6f8",
-    "teal": "#4d7fb3",
-    "panel": "#ffffff",
-    "border": "#d9e3f0",
-    "text": "#506377",
-    "muted": "#7f91a6",
-    "soft": "#f6f8fc",
-    "green": "#2e8b6f",
-    "yellow": "#d3a23c",
-    "red": "#cf5c5c",
-}
-
-
 def inject_theme_overrides() -> None:
     st.markdown(
         """
         <style>
-        :root {
-          --navy:#2a4561; --blue:#2f6fed; --blue-soft:#7ea6f8; --teal:#4d7fb3;
-          --panel:#ffffff; --border:#d9e3f0; --text:#506377; --muted:#7f91a6;
-          --soft:#f6f8fc; --green:#2e8b6f; --yellow:#d3a23c; --red:#cf5c5c;
+        .stApp {
+          background:
+            radial-gradient(1300px 420px at 12% -20%, #f7fbff 0%, transparent 60%),
+            linear-gradient(180deg, #f2f7fd 0%, #eef4fb 100%);
+          color: #3a526c;
         }
-        .stApp { background: var(--soft); color: var(--text); }
-        .block-container {padding-top: 2.75rem; max-width: 1320px;}
-        .topbar, .dashboard-title-block, .dash-kpi, .dash-card, .weekly-hero, .ws-card, .decision-card {
-            background: var(--panel); border:1px solid var(--border); border-radius: 14px;
-        }
-        .topbar {display:flex; gap:16px; justify-content:space-between; align-items:center; padding:14px; margin-bottom:10px;}
-        .brand-title {font-size:1.05rem; font-weight:700; color:var(--navy)}
-        .brand-copy,.dashboard-meta,.dash-card-copy,.profile-role {color:var(--muted); font-size:.83rem;}
-        .search-shell {background:var(--soft); border:1px solid var(--border); border-radius:999px; padding:.45rem .9rem; min-width:280px; color:var(--muted)}
-        .toolbar-actions{display:flex; gap:8px} .toolbar-icon{border:1px solid var(--border); border-radius:8px; padding:4px 8px;}
-        .profile-shell{display:flex; gap:8px; align-items:center} .profile-avatar{background:var(--blue); color:white; width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:.78rem;}
-        .dashboard-title-block{padding:16px; margin-bottom:10px;} .dashboard-title{font-size:1.25rem; font-weight:700; color:var(--navy);}
-        .update-pill,.status-pill{border-radius:999px;padding:.1rem .5rem; font-size:.72rem; border:1px solid var(--border)}
-        .dash-kpi{padding:10px 12px} .dash-kpi-name{font-size:.78rem;color:var(--muted)} .dash-kpi-value{font-size:1.3rem;font-weight:700;color:var(--navy)}
-        .dash-card{padding:12px; margin-bottom:10px;} .dash-card-title{font-size:.95rem; font-weight:700; color:var(--navy)}
-        .dash-card-heading{font-weight:600; color:var(--text)}
-        .dash-tag-green,.status-good{background:#e9f6f0;color:var(--green);border-color:#b7dfcf}
-        .dash-tag-yellow,.status-warn{background:#fff8ea;color:#9e7618;border-color:#ead9a8}
-        .dash-tag-red,.status-bad{background:#ffefef;color:var(--red);border-color:#efc3c3}
-        .status-neutral{background:#eff4fb;color:var(--text)}
-        .roadmap-grid,.timeline-grid,.workstream-grid{display:grid; gap:10px}
-        .roadmap-grid{grid-template-columns:repeat(5,minmax(90px,1fr));}
-        .road-band{background:var(--soft);border:1px solid var(--border);padding:8px;border-radius:10px;text-align:center;font-size:.8rem}
-        .road-marker{margin-top:5px;font-size:.75rem;color:var(--muted)}
-        .milestone-item,.risk-item{border-bottom:1px solid #edf2f8; padding:8px 0}
-        .milestone-datebox{display:inline-block; text-align:center; background:var(--soft); border:1px solid var(--border); border-radius:8px; padding:4px 7px; min-width:42px}
-        .milestone-day{font-weight:700;color:var(--navy)} .milestone-month{font-size:.72rem;color:var(--muted)}
-        .risk-head{display:flex; justify-content:space-between; gap:8px;} .risk-title{font-weight:600} .risk-trend{font-size:.75rem;color:var(--muted)}
-        .dash-table table{width:100%; border-collapse:collapse; font-size:.85rem} .dash-table th,.dash-table td{border-bottom:1px solid #edf2f8; padding:6px; text-align:left}
-        .weekly-hero{background:linear-gradient(135deg,#213a54,#2a4561); color:white; padding:14px; margin-bottom:10px}
-        .weekly-hero-title{font-size:1.2rem;font-weight:700} .weekly-status-dot,.hero-status-dot{width:10px;height:10px;border-radius:999px;display:inline-block;margin-right:6px;}
-        .weekly-section-title{font-weight:700;color:var(--navy)} .weekly-section-copy{font-size:.83rem;color:var(--muted)}
-        .risk-table table{width:100%; font-size:.83rem} .decision-card{padding:10px} .ws-card{padding:10px;background:var(--soft)}
+        .block-container { max-width: 1520px; padding-top: 1rem; }
+        [data-testid="stSidebar"] { background: linear-gradient(180deg, #ebf2fb 0%, #e1ecf8 100%); border-right: 1px solid #cfdded; }
+        .topbar { display:grid; grid-template-columns:2.1fr 2.3fr auto auto; gap:12px; align-items:center; background:#fff; border:1px solid #d7e4f2; border-radius:16px; padding:14px; margin-bottom:12px; }
+        .dashboard-title { font-size: 2rem; font-weight: 800; color: #16314d; line-height: 1.15; }
+        .dashboard-title-block { background:#fff; border:1px solid #d7e4f2; border-radius:16px; padding:16px; margin-bottom:12px; }
+        .dashboard-meta,.brand-copy,.copy,.profile-role { color:#758ba2; font-size:.84rem; }
+        .dash-kpi { border-radius:18px; min-height:126px; background:linear-gradient(180deg,#fff 0%, #f8fbff 100%); border:1px solid #d9e6f3; padding:16px; box-shadow:0 10px 24px rgba(24,48,76,.05); }
+        .dash-kpi-name { text-transform:uppercase; letter-spacing:.11em; color:#7a8fa5; font-size:.72rem; font-weight:700; }
+        .dash-kpi-value { font-size:2rem; font-weight:800; color:#16314d; margin-top:8px; }
+        .dashboard-main-grid { margin-top:8px; }
+        .panel-header { margin:10px 0 8px; }
+        .heading { font-size:1.02rem; font-weight:700; color:#19324e; }
+        .program-grid { display:grid; gap:10px; }
+        .program-grid-card { background:#fff; border:1px solid #d7e4f2; border-radius:14px; padding:12px; }
+        .program-grid-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+        .program-grid-title { font-weight:700; color:#19324e; }
+        .program-grid-link { margin-top:10px; display:inline-block; background:#2f6fed; color:white; border-radius:999px; padding:8px 14px; font-weight:700; font-size:.8rem; }
+        .milestone-item { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:10px 0; border-bottom:1px solid #edf3fb; }
+        .milestone-datebox { min-width:52px; border:1px solid #d6e3f2; border-radius:10px; background:#f5f9ff; text-align:center; padding:6px; }
+        .priority-badge { display:inline-block; margin-top:6px; border:1px solid #d2e0ef; border-radius:999px; padding:2px 8px; font-size:.72rem; }
+        .risk-item { border-bottom:1px solid #edf3fb; padding:10px 0; }
+        .risk-head { display:flex; justify-content:space-between; gap:8px; }
+        .risk-title { font-weight:700; color:#1a344f; }
+        .risk-trend { color:#7a90a8; font-size:.78rem; }
+        .road-band { background:#fff; border:1px solid #d7e4f2; border-radius:12px; padding:10px; margin-bottom:8px; }
+        .road-band-segment { display:inline-block; margin:4px 5px 0 0; padding:3px 8px; border-radius:999px; border:1px solid #d5e2f0; font-size:.72rem; color:#617994; }
+        .road-band-segment.active { background:#2f6fed; color:#fff; border-color:#2f6fed; }
+        .road-marker { width:10px; height:10px; border-radius:50%; background:#2f6fed; margin-top:7px; }
+        .road-marker-label { font-size:.76rem; color:#6a8199; margin-top:4px; }
+        .decision-shell { display:grid; grid-template-columns:repeat(3,minmax(220px,1fr)); gap:10px; }
+        .decision-card { background:#fff; border:1px solid #d7e4f2; border-radius:12px; padding:12px; }
+        .update-pill,.status-pill { border-radius:999px; padding:3px 8px; border:1px solid #d4e2f0; font-size:.72rem; }
+        .dash-tag-green,.status-good{ background:#eaf8f0; color:#23714e; }
+        .dash-tag-yellow{ background:#fff8e8; color:#946e16; }
+        .dash-tag-red{ background:#fff0f0; color:#b94747; }
+        .dash-tag-neutral{ background:#edf4ff; color:#46617d; }
+        .weekly-hero { background:linear-gradient(135deg,#10233b,#1b3553); color:#fff; border-radius:18px; padding:18px; border:1px solid rgba(255,255,255,.16); }
+        .ws-card { background:#fff; border:1px solid #d9e6f3; border-radius:12px; padding:10px; }
+        .ws-bar { height:8px; border-radius:999px; background:#e8eff8; overflow:hidden; }
+        .ws-bar span { display:block; height:100%; background:#2f6fed; }
+        .timeline-node{ }
         </style>
         """,
         unsafe_allow_html=True,

@@ -25,17 +25,10 @@ from app.core.config import AuthValidationResult, validate_canonical_auth_config
 from app.core.db import init_engine
 from app.core.error_reporting import render_internal_error
 from app.core.logging import configure_logging
-from app.ui.layout import configure_page, render_shell
+from app.ui.layout import configure_page
 from app.ui.pages import build_pages
 
-
-st.set_page_config(
-    page_title=APP_NAME,
-    page_icon="🧊",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
-
+st.set_page_config(page_title=APP_NAME, page_icon="🧊", layout="wide", initial_sidebar_state="expanded")
 
 _CALLBACK_ATTEMPTS_KEY = "auth_callback_attempts"
 _CALLBACK_MARKER_KEY = "auth_callback_marker"
@@ -50,10 +43,7 @@ def safe_is_logged_in() -> bool:
         return False
 
 
-def _record_callback_failure(
-    session_state: MutableMapping[str, object],
-    query_params: Mapping[str, object],
-) -> int:
+def _record_callback_failure(session_state: MutableMapping[str, object], query_params: Mapping[str, object]) -> int:
     callback_code = str(query_params.get("code", ""))
     callback_error = str(query_params.get("error", ""))
     callback_state = str(query_params.get("state", ""))
@@ -166,9 +156,9 @@ def main() -> None:
         if st.button("Logout"):
             _logout()
 
-    render_shell(ctx)
     pages = build_pages(ctx)
-    st.navigation(pages, position="top").run()
+    selected_page = st.navigation(pages, position="hidden")
+    selected_page.run()
 
 
 if __name__ == "__main__":
@@ -177,5 +167,5 @@ if __name__ == "__main__":
         configure_page()
         init_engine()
         main()
-    except Exception as exc:  # pragma: no cover - visual runtime fallback
+    except Exception as exc:  # pragma: no cover
         render_internal_error(exc, context="streamlit_app bootstrap/main execution")
