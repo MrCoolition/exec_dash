@@ -93,13 +93,12 @@ def render_dashboard_program_grid_section(df: pd.DataFrame) -> None:
             program_id = str(row.get("program_id") or "")
             if not program_id:
                 continue
-            st.button(
+            if st.button(
                 "Open Program",
                 key=f"open-program-{program_id}-{idx}",
                 type="primary",
-                on_click=open_program,
-                args=(program_id,),
-            )
+            ):
+                open_program(program_id)
 
 
 def render_dashboard_milestones(df: pd.DataFrame) -> str:
