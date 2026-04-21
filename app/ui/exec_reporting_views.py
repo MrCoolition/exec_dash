@@ -74,10 +74,35 @@ def render_dashboard_program_grid(df: pd.DataFrame) -> str:
             f"<div class='copy'>Sponsor: {escape(str(row.get('Executive Sponsor') or '—'))} • Lead: {escape(str(row.get('Lead') or '—'))}</div>"
             f"<div class='copy'>Phase: {escape(str(row.get('Stage') or '—'))} • Milestone: {escape(str(row.get('Milestone') or '—'))}</div>"
             f"<div class='copy'>Progress: {escape(str(row.get('Progress') or 0))}%</div>"
-            "<div class='program-grid-link'>Open Program</div>"
             "</div>"
         )
     return "<div class='program-grid'>" + "".join(cards) + "</div>"
+
+
+def render_dashboard_program_grid_section(df: pd.DataFrame) -> None:
+    from app.ui.pages.common import open_program
+
+    render_html("<div class='program-grid'>")
+    for idx, row in enumerate(df.to_dict("records")):
+        render_html(
+            "<div class='program-grid-card'>"
+            f"<div class='program-grid-head'><div class='program-grid-title'>{escape(str(row.get('Program') or 'Program'))}</div>{dashboard_status_tag(row.get('Status'))}</div>"
+            f"<div class='copy'>Sponsor: {escape(str(row.get('Executive Sponsor') or '—'))} • Lead: {escape(str(row.get('Lead') or '—'))}</div>"
+            f"<div class='copy'>Phase: {escape(str(row.get('Stage') or '—'))} • Milestone: {escape(str(row.get('Milestone') or '—'))}</div>"
+            f"<div class='copy'>Progress: {escape(str(row.get('Progress') or 0))}%</div>"
+            "</div>"
+        )
+        program_id = str(row.get("program_id") or "")
+        if not program_id:
+            continue
+        st.button(
+            "Open Program",
+            key=f"open-program-{program_id}-{idx}",
+            type="primary",
+            on_click=open_program,
+            args=(program_id,),
+        )
+    render_html("</div>")
 
 
 def render_dashboard_milestones(df: pd.DataFrame) -> str:
@@ -236,7 +261,7 @@ def render_dashboard(
     left, right = st.columns([1.8, 1])
     with left:
         render_html("<div class='panel-header'><div class='heading'>Program Grid / Weekly Updates</div></div>")
-        render_html(render_dashboard_program_grid(df))
+        render_dashboard_program_grid_section(df)
         render_html("<div class='panel-header'><div class='heading'>Portfolio Roadmap / Program Timeline</div></div>")
         render_html(render_dashboard_roadmap(df))
     with right:
