@@ -1,3 +1,5 @@
+import datetime as dt
+
 from app.repositories import weekly_updates
 from app.services.user_context import UserContext
 from app.models.pydantic_models import User
@@ -33,3 +35,25 @@ def test_portfolio_decision_counts_ignore_blank():
 
     kpi = build_portfolio_kpis(programs)
     assert kpi["decisions_pending"] == 1
+
+
+def test_readiness_requires_summary_accomplishments_and_milestone():
+    issues = update_center._readiness(
+        {
+            "executive_summary": "",
+            "accomplishments": "",
+            "milestones": [],
+        }
+    )
+    assert issues == ["Executive Summary Notes", "Key Accomplishments This Week", "At least one milestone"]
+
+
+def test_summary_sentence_contains_program_progress_trend_and_week():
+    sentence = update_center._summary_sentence(
+        "Program A",
+        {"percent_complete": 42, "trend": "Up", "week_ending": dt.date(2026, 4, 17)},
+    )
+    assert "Program A" in sentence
+    assert "42%" in sentence
+    assert "Up" in sentence
+    assert "2026-04-17" in sentence
