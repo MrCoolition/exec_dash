@@ -25,6 +25,14 @@ class AdoClient:
             response.raise_for_status()
             return response.json()
 
+    def list_projects(self) -> list[dict[str, Any]]:
+        payload = self._get(f"{self.base}/_apis/projects", {"api-version": self.api_version})
+        return payload.get("value", [])
+
+    def list_teams(self, project: str) -> list[dict[str, Any]]:
+        payload = self._get(f"{self.base}/_apis/projects/{project}/teams", {"api-version": self.api_version})
+        return payload.get("value", [])
+
     def list_queries(self, project: str) -> dict[str, Any]:
         return self._get(f"{self.base}/{project}/_apis/wit/queries", {"api-version": self.api_version})
 
