@@ -54,10 +54,21 @@ def render() -> None:
     selected_team = st.selectbox("Team scope", team_labels, key="ado_team")
 
     team_area_path: str | None = None
+    team_area_paths: list[tuple[str, bool]] = []
     if selected_team != "All teams":
         team_area_path = f"{project}\\{selected_team}"
+        try:
+            team_field_values = client.list_team_field_values(project, selected_team)
+            for value in team_field_values:
+                path = str(value.get("value", "")).strip()
+                if not path:
+                    continue
+                include_children = bool(value.get("includeChildren", False))
+                team_area_paths.append((path, include_children))
+        except Exception as exc:
+            st.caption(f"Falling back to inferred team area path ({team_area_path}) because team settings failed: {exc}")
 
-    wiql = build_team_scoped_wiql(project=project, area_path=team_area_path)
+    wiql = build_team_scoped_wiql(project=project, area_path=team_area_path, team_area_paths=team_area_paths)
     with st.expander("WIQL", expanded=False):
         st.code(wiql, language="sql")
 
