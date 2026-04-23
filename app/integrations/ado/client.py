@@ -33,6 +33,13 @@ class AdoClient:
         payload = self._get(f"{self.base}/_apis/projects/{project}/teams", {"api-version": self.api_version})
         return payload.get("value", [])
 
+    def list_team_field_values(self, project: str, team: str) -> list[dict[str, Any]]:
+        payload = self._get(
+            f"{self.base}/{project}/{team}/_apis/work/teamsettings/teamfieldvalues",
+            {"api-version": self.api_version},
+        )
+        return payload.get("values", [])
+
     def list_queries(self, project: str) -> dict[str, Any]:
         return self._get(f"{self.base}/{project}/_apis/wit/queries", {"api-version": self.api_version})
 

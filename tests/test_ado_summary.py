@@ -13,6 +13,17 @@ def test_build_team_scoped_wiql_with_team_scope_and_escaping():
     assert "[System.AreaPath] UNDER 'Plat''form\\Core Team'" in wiql
 
 
+def test_build_team_scoped_wiql_with_explicit_team_field_values():
+    wiql = build_team_scoped_wiql(
+        "Foodbuy",
+        team_area_paths=[
+            ("Foodbuy\\Compliance", True),
+            ("Foodbuy\\Shared", False),
+        ],
+    )
+    assert "([System.AreaPath] UNDER 'Foodbuy\\Compliance' OR [System.AreaPath] = 'Foodbuy\\Shared')" in wiql
+
+
 def test_summarize_counts_by_iteration_groups_and_defaults():
     items = [
         {"fields": {"System.IterationPath": "A\\Sprint 1"}},
