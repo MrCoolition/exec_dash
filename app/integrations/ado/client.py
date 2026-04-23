@@ -7,13 +7,13 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import load_config
 from app.integrations.ado.auth import AdoCredentialProvider
-from app.integrations.ado.endpoints import base_url
+from app.integrations.ado.endpoints import base_url, normalize_organization
 
 
 class AdoClient:
     def __init__(self, creds: AdoCredentialProvider, organization: str | None = None) -> None:
         cfg = load_config().ado
-        self.organization = organization or cfg.organization
+        self.organization = normalize_organization(organization or cfg.organization)
         self.api_version = cfg.api_version
         self.headers = creds.get_auth_headers()
         self.base = base_url(self.organization)
