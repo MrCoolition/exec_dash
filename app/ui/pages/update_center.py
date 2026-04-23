@@ -6,6 +6,7 @@ from html import escape
 import pandas as pd
 import streamlit as st
 
+from app.core.permissions import can_edit_updates
 from app.repositories.programs import get_program
 from app.repositories.weekly_updates import (
     PHASE_OPTIONS,
@@ -18,7 +19,6 @@ from app.repositories.weekly_updates import (
     list_milestones,
     list_risks,
     resolve_app_user_id,
-    reset_weekly_update,
     save_weekly_update_draft,
     submit_weekly_update,
 )
@@ -67,6 +67,13 @@ def _load_into_state(seed: dict) -> None:
     st.session_state.wu_decisions = seed.get("decisions", [])
 
 
+def _sync_reporting_date_from_form() -> None:
+    selected_week = st.session_state.get("wu_week_ending")
+    if selected_week is not None:
+        st.session_state.reporting_date = selected_week
+        st.session_state.wu_loaded_key = None
+
+
 def _submitted_by(ctx: UserContext) -> str | None:
     return resolve_app_user_id(ctx.user.provider_sub, ctx.user.email)
 
@@ -101,33 +108,54 @@ def _readiness(payload: dict) -> list[str]:
     return issues
 
 
+def _summary_sentence(program_name: str, payload: dict) -> str:
+    return (
+        f"{program_name} is {payload.get('percent_complete', 0)}% complete "
+        f"with {payload.get('trend')} trend for week ending {payload.get('week_ending')}."
+    )
+
+
+def _non_blank_decisions(decisions: list[dict]) -> list[dict]:
+    return [decision for decision in decisions if has_text(decision.get("decision_topic"))]
+
+
 def render(ctx: UserContext) -> None:
     state = ensure_sidebar_state(current_page="Weekly Updates")
+    if not can_edit_updates(ctx):
+        st.info("You do not have edit access to Weekly Updates yet. Contact your platform admin if this should change.")
+        return
+
     program_id = state["selected_program_id"]
     program = get_program(program_id) or {}
-    week_ending = state["reporting_date"]
+    sidebar_week = state["reporting_date"]
 
-    state_key = f"wu::{program_id}::{week_ending.isoformat()}"
+    if st.session_state.get("wu_week_ending") != sidebar_week:
+        st.session_state.wu_week_ending = sidebar_week
+
+    effective_week = st.session_state.get("wu_week_ending", sidebar_week)
+    state_key = f"wu::{program_id}::{effective_week.isoformat()}"
     if st.session_state.get("wu_loaded_key") != state_key:
-        _load_into_state(_seed_defaults(program_id, week_ending))
+        _load_into_state(_seed_defaults(program_id, effective_week))
         st.session_state.wu_loaded_key = state_key
 
     render_html(
         "<div class='weekly-hero'>"
         f"<div class='weekly-hero-title'>Weekly Updates — {escape(program.get('name') or 'Program')}</div>"
         f"<div class='weekly-hero-sub'>{escape(program.get('portfolio_name') or 'Portfolio')} • Sponsor {escape(program.get('sponsor_name') or '—')} • Lead {escape(program.get('owner_name') or '—')}</div>"
+        f"<div class='weekly-hero-sub'>Reporting week: {escape(str(st.session_state.get('wu_week_ending') or '—'))}</div>"
         f"<div class='weekly-hero-metrics'>{dashboard_status_tag(st.session_state.get('wu_overall_status'))} <span class='update-pill'>{st.session_state.get('wu_percent_complete', 0)}%</span> <span class='update-pill'>{escape(st.session_state.get('wu_current_phase') or '—')}</span></div>"
-        "<div class='weekly-section-copy'>Submitted data updates portfolio and one-pager automatically.</div>"
+        "<div class='weekly-section-copy'>Submitted data updates portfolio and one-pager views automatically after publish.</div>"
         "</div>"
     )
 
     section_bar("Core Status Inputs", "Enter this reporting week's executive status.")
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.date_input("Week Ending Date", key="wu_week_ending")
+    c1.date_input("Week Ending Date", key="wu_week_ending", on_change=_sync_reporting_date_from_form)
     c2.selectbox("Overall Status", sorted(STATUS_OPTIONS), key="wu_overall_status")
     c3.selectbox("Current Phase", sorted(PHASE_OPTIONS), key="wu_current_phase")
     c4.slider("% Complete", 0, 100, key="wu_percent_complete")
-    c5.selectbox("Trend", sorted(TREND_OPTIONS), key="wu_trend")
+    c5.selectbox("Trend vs Prior Week", sorted(TREND_OPTIONS), key="wu_trend")
+    st.caption("Write for executive readers: concise outcomes, notable risks, and decisions required this week.")
 
     section_bar("Milestone Updates")
     st.session_state.wu_milestones = st.data_editor(
@@ -167,6 +195,7 @@ def render(ctx: UserContext) -> None:
     ).to_dict("records")
 
     section_bar("Leadership Decision Requests")
+    st.caption("Decision requests submitted here surface in executive-facing portfolio and one-pager views.")
     st.session_state.wu_decisions = st.data_editor(
         pd.DataFrame(st.session_state.get("wu_decisions", [])),
         key="wu_decisions_editor",
@@ -183,10 +212,14 @@ def render(ctx: UserContext) -> None:
     payload = _payload(program_id, _submitted_by(ctx))
 
     section_bar("Executive Preview")
-    st.markdown(f"{dashboard_status_tag(payload.get('overall_status'))} {payload.get('percent_complete', 0)}% complete, trend {payload.get('trend')}, week ending {payload.get('week_ending')}", unsafe_allow_html=True)
+    st.markdown(dashboard_status_tag(payload.get("overall_status")), unsafe_allow_html=True)
+    st.write(_summary_sentence(program.get("name") or "Program", payload))
     st.write(payload.get("executive_summary") or "No executive summary yet.")
-    render_html_table(pd.DataFrame(payload.get("decisions", [])), ["decision_topic", "required_by", "impact_if_unresolved"])
-    render_html_table(pd.DataFrame(payload.get("risks", [])).head(3), ["severity", "risk_title", "owner_name", "target_date"])
+    open_decisions = _non_blank_decisions(payload.get("decisions", []))
+    if open_decisions:
+        render_html_table(pd.DataFrame(open_decisions), ["decision_topic", "required_by", "impact_if_unresolved"])
+    else:
+        st.caption("No open decision requests.")
 
     section_bar("Submission Readiness")
     issues = _readiness(payload)
@@ -196,6 +229,11 @@ def render(ctx: UserContext) -> None:
             st.caption(f"• {item}")
     else:
         st.success("Ready to submit.")
+
+    top_risks = pd.DataFrame(payload.get("risks", [])).head(3)
+    if not top_risks.empty:
+        st.caption("Top risks")
+        render_html_table(top_risks, ["severity", "risk_title", "owner_name", "target_date"])
 
     b1, b2, b3 = st.columns(3)
     if b1.button("Save Draft"):
@@ -209,11 +247,12 @@ def render(ctx: UserContext) -> None:
         try:
             submit_weekly_update(payload)
             st.success("Weekly update submitted and published.")
+            st.rerun()
         except ValueError as ex:
             st.error(str(ex))
 
     if b3.button("Reset Program"):
-        seed = reset_weekly_update(program_id, week_ending) or _seed_defaults(program_id, week_ending)
-        _load_into_state(seed)
-        st.success("Form reset.")
+        _load_into_state(_seed_defaults(program_id, st.session_state.get("wu_week_ending", sidebar_week)))
+        st.session_state.wu_loaded_key = None
+        st.success("Unsaved edits discarded; form restored from stored data for this week.")
         st.rerun()
