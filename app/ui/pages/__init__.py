@@ -16,7 +16,7 @@ def build_pages(ctx: UserContext) -> list[st.Page]:
             title="Weekly Updates",
             icon=":material/edit:",
             url_path="updates",
-            visibility="default" if can_edit_updates(ctx) else "hidden",
+            visibility="default",
         ),
         st.Page(ado.render, title="ADO", icon=":material/sync:", url_path="ado"),
         st.Page(settings.render, title="Settings", icon=":material/settings:", url_path="settings"),
