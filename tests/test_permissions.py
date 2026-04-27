@@ -14,4 +14,5 @@ def test_admin_permissions():
 
 def test_update_permissions():
     assert can_edit_updates(_ctx("program_owner"))
+    assert can_edit_updates(_ctx("user"))
     assert not can_edit_updates(_ctx("client_viewer"))
